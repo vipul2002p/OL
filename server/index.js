@@ -12,7 +12,7 @@ const razorpay = new Razorpay({
     key_id : 'rzp_test_06I3Zl1gQohVlT',
     key_secret : '2eOknd6qVk45Kv2hpvY2cwPO'
 })
-var src = fs.readdirSync('C:/Users/Admin/Documents/Ol/Ol/server/public/uploads/');
+var src = fs.readdirSync(__dirname+'/uploads/');
 app.post("/src",(req,res) => {
     res.json(src);
 })
@@ -40,7 +40,7 @@ app.post("/uploads",(req,res) => {
         }
           
         var oldpath = files.photo[0].filepath;
-        fs.rename(oldpath,"C:/Users/Admin/Documents/Ol/Ol/server/public/uploads/"+`${files.photo[0].originalFilename}`,(err) => {
+        fs.rename(oldpath,__dirname+'/uploads/'+`${files.photo[0].originalFilename}`,(err) => {
             if(err){
                 console.log(err);
             }
