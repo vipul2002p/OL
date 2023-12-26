@@ -20,7 +20,7 @@ The Online Library Site is a platform designed to provide users with access to a
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/vipul2002p/OL
+    git clone [https://github.com/vipul2002p/OL](https://github.com/vipul2002p/OL.git)
     cd OL
     ```
 
@@ -69,7 +69,3 @@ The Online Library Site is a platform designed to provide users with access to a
 ## Contributing
 
 We welcome contributions from the community. If you find any issues or have suggestions for improvements, feel free to open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
