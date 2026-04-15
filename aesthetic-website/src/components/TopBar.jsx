@@ -9,9 +9,9 @@ export default function TopBar() {
             <Mail size={14} />
             <span>info@aesthetiqpro.com</span>
           </a>
-          <a href="tel:+1234567890" className="flex items-center gap-2 hover:text-gold transition-colors duration-300">
+          <a href="tel:+12345678900" className="flex items-center gap-2 hover:text-gold transition-colors duration-300">
             <Phone size={14} />
-            <span>+1 (234) 567-890</span>
+            <span>+1 (234) 567-8900</span>
           </a>
         </div>
         <div className="flex items-center gap-6">
