@@ -1,0 +1,29 @@
+import TopBar from './components/TopBar';
+import Navbar from './components/Navbar';
+import HeroSlider from './components/HeroSlider';
+import AboutSection from './components/AboutSection';
+import Testimonials from './components/Testimonials';
+import Gallery from './components/Gallery';
+import FeaturedProducts from './components/FeaturedProducts';
+import ContactSection from './components/ContactSection';
+import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
+import SubscribePopup from './components/SubscribePopup';
+
+export default function App() {
+  return (
+    <div className="min-h-screen">
+      <TopBar />
+      <Navbar />
+      <HeroSlider />
+      <AboutSection />
+      <Testimonials />
+      <Gallery />
+      <FeaturedProducts />
+      <ContactSection />
+      <Footer />
+      <ScrollToTop />
+      <SubscribePopup />
+    </div>
+  );
+}
