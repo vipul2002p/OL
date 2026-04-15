@@ -1,8 +1,7 @@
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Navigation, Pagination } from 'swiper/modules';
+import { Autoplay, Navigation } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
-import 'swiper/css/pagination';
 
 const testimonials = [
   {
@@ -26,54 +25,46 @@ export default function Testimonials() {
   return (
     <section
       id="testimonials"
-      className="py-28 bg-light relative overflow-hidden"
+      className="py-28 relative overflow-hidden"
+      style={{ backgroundColor: '#f5f3ef' }}
     >
-      {/* Decorative botanical elements */}
-      <svg className="absolute top-8 left-8 w-24 h-24 botanical-decoration" viewBox="0 0 100 100" fill="none" stroke="#c9a96e" strokeWidth="0.5">
-        <path d="M50 90 C50 50, 20 30, 10 10" />
-        <path d="M50 90 C50 50, 80 30, 90 10" />
-        <ellipse cx="30" cy="40" rx="15" ry="8" transform="rotate(-30 30 40)" />
-        <ellipse cx="70" cy="40" rx="15" ry="8" transform="rotate(30 70 40)" />
-      </svg>
-      <svg className="absolute bottom-8 right-8 w-24 h-24 botanical-decoration" viewBox="0 0 100 100" fill="none" stroke="#c9a96e" strokeWidth="0.5">
-        <path d="M50 10 C50 50, 20 70, 10 90" />
-        <path d="M50 10 C50 50, 80 70, 90 90" />
-        <ellipse cx="30" cy="60" rx="15" ry="8" transform="rotate(30 30 60)" />
-        <ellipse cx="70" cy="60" rx="15" ry="8" transform="rotate(-30 70 60)" />
-      </svg>
-
-      <div className="max-w-4xl mx-auto px-6 relative z-10">
+      <div className="max-w-[800px] mx-auto px-6 relative z-10">
         {/* Header */}
-        <div className="text-center mb-12">
-          <span className="text-gold/60 text-xs tracking-[0.2em] uppercase">
+        <div className="text-center mb-10">
+          <span
+            className="text-[10px] tracking-[0.25em] uppercase block mb-2"
+            style={{ color: 'var(--color-gold)', opacity: 0.6 }}
+          >
             You said about us
           </span>
-          <p className="font-script text-gold text-4xl md:text-5xl mt-2">
+          <p className="font-script text-[42px] md:text-[52px] leading-none mb-1" style={{ color: 'var(--color-gold)' }}>
             perfect shades
           </p>
-          <h2 className="text-2xl md:text-3xl font-bold text-primary mt-2 uppercase tracking-[0.15em]">
+          <h2 className="text-[22px] md:text-[26px] font-bold text-primary uppercase tracking-[0.12em]">
             Testimonials
           </h2>
         </div>
 
         <Swiper
-          modules={[Autoplay, Navigation, Pagination]}
-          autoplay={{ delay: 5000, disableOnInteraction: false }}
+          modules={[Autoplay, Navigation]}
+          autoplay={{ delay: 6000, disableOnInteraction: false }}
           navigation
-          pagination={{ clickable: true }}
           slidesPerView={1}
           loop
           className="testimonial-swiper"
         >
           {testimonials.map((t, i) => (
             <SwiperSlide key={i}>
-              <div className="text-center px-8 md:px-16 pb-12">
-                <p className="text-primary/70 text-base md:text-lg leading-relaxed italic mb-8" style={{ fontFamily: 'var(--font-heading)' }}>
+              <div className="text-center px-12 md:px-20 pb-8">
+                <p
+                  className="text-primary/60 text-[15px] md:text-[17px] leading-[1.9] italic mb-8"
+                  style={{ fontFamily: 'var(--font-heading)' }}
+                >
                   {t.quote}
                 </p>
-                <span className="text-primary text-sm tracking-wider">
-                  - {t.name} -
-                </span>
+                <h4 className="text-primary text-[14px] font-semibold tracking-[0.1em] uppercase">
+                  {t.name}
+                </h4>
               </div>
             </SwiperSlide>
           ))}

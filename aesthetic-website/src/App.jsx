@@ -8,6 +8,7 @@ import FeaturedProducts from './components/FeaturedProducts';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
+import SubscribePopup from './components/SubscribePopup';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
       <ContactSection />
       <Footer />
       <ScrollToTop />
+      <SubscribePopup />
     </div>
   );
 }

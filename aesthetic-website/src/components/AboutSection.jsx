@@ -10,7 +10,7 @@ const sections = [
     cta: 'Discover',
     href: '#products',
     image:
-      'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80',
+      'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=800&q=80',
     reverse: false,
   },
   {
@@ -22,56 +22,62 @@ const sections = [
     cta: 'Discover',
     href: '#gallery',
     image:
-      'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=800&q=80',
+      'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=800&q=80',
     reverse: true,
   },
 ];
 
 export default function AboutSection() {
   return (
-    <section id="about" className="py-28 bg-white">
+    <section id="about" className="bg-white">
       {sections.map((section, i) => (
         <div
           key={i}
-          className={`max-w-7xl mx-auto px-6 flex flex-col ${
+          className={`max-w-[1200px] mx-auto px-6 py-24 flex flex-col ${
             section.reverse ? 'lg:flex-row-reverse' : 'lg:flex-row'
-          } items-center gap-16 ${i > 0 ? 'mt-32' : ''}`}
+          } items-center gap-14`}
         >
           {/* Image */}
           <motion.div
-            initial={{ opacity: 0, x: section.reverse ? 50 : -50 }}
+            initial={{ opacity: 0, x: section.reverse ? 40 : -40 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: 'easeOut' }}
             className="lg:w-1/2"
           >
             <img
               src={section.image}
               alt={section.title}
-              className="w-full h-[500px] object-cover"
+              className="w-full h-[480px] object-cover"
             />
           </motion.div>
 
           {/* Content */}
           <motion.div
-            initial={{ opacity: 0, x: section.reverse ? -50 : 50 }}
+            initial={{ opacity: 0, x: section.reverse ? -40 : 40 }}
             whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-100px' }}
-            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-            className="lg:w-1/2"
+            viewport={{ once: true, margin: '-80px' }}
+            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
+            className="lg:w-1/2 lg:px-6"
           >
-            <h2 className="text-3xl md:text-4xl text-gold font-bold leading-tight uppercase tracking-wide">
+            <h2
+              className="text-[26px] md:text-[32px] font-bold leading-tight uppercase tracking-[0.06em]"
+              style={{ color: 'var(--color-gold)' }}
+            >
               {section.title}
             </h2>
-            <h5 className="text-base md:text-lg text-primary/80 italic leading-relaxed mt-6 mb-6" style={{ fontFamily: 'var(--font-heading)' }}>
+            <h5
+              className="text-[14px] md:text-[16px] text-primary/70 italic leading-[1.7] mt-5 mb-5"
+              style={{ fontFamily: 'var(--font-heading)' }}
+            >
               {section.subtitle}
             </h5>
-            <p className="text-muted leading-relaxed mb-8 text-sm">
+            <p className="text-muted leading-[1.8] mb-9 text-[13px]">
               {section.description}
             </p>
             <a
               href={section.href}
-              className="inline-block border border-primary text-primary px-10 py-3.5 text-xs font-medium tracking-[0.2em] uppercase hover:bg-primary hover:text-white transition-all duration-300"
+              className="inline-block border border-primary text-primary px-10 py-3.5 text-[10px] font-medium tracking-[0.2em] uppercase hover:bg-primary hover:text-white transition-all duration-300"
             >
               {section.cta}
             </a>
