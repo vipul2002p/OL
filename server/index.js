@@ -2,24 +2,30 @@ const bodyParser = require('body-parser');
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 const formidable = require("formidable");
 const app = express();
 app.use(cors());
-var filePath = __dirname+`/one.pdf`; 
-const port = 9090 ;
+
+// Configurable paths — override via environment variables for portability
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
+const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
+const port = process.env.PORT || 9090;
+
+var filePath = path.join(__dirname, 'one.pdf');
 const Razorpay = require('razorpay');
 const razorpay = new Razorpay({
-    key_id : 'rzp_test_06I3Zl1gQohVlT',
-    key_secret : '2eOknd6qVk45Kv2hpvY2cwPO'
+    key_id : process.env.RAZORPAY_KEY_ID || 'rzp_test_06I3Zl1gQohVlT',
+    key_secret : process.env.RAZORPAY_KEY_SECRET || '2eOknd6qVk45Kv2hpvY2cwPO'
 })
-var src = fs.readdirSync(__dirname+'/uploads/');
+var src = fs.readdirSync(UPLOADS_DIR);
 app.post("/src",(req,res) => {
     res.json(src);
 })
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }))
-app.use("/", express.static(__dirname + '/public/'));
+app.use("/", express.static(PUBLIC_DIR));
 app.post('/download', (req, res) => {
     var str = req.body.message;
     res.set({
@@ -27,7 +33,7 @@ app.post('/download', (req, res) => {
         'Content-Disposition': 'attachment;filename : "file.pdf"'
     })
 
-    res.sendFile(__dirname + `/${str}.pdf`)
+    res.sendFile(path.join(__dirname, `${str}.pdf`))
 })
 
 app.post("/uploads",(req,res) => {
@@ -40,7 +46,7 @@ app.post("/uploads",(req,res) => {
         }
           
         var oldpath = files.photo[0].filepath;
-        fs.rename(oldpath,__dirname+'/uploads/'+`${files.photo[0].originalFilename}`,(err) => {
+        fs.rename(oldpath, path.join(UPLOADS_DIR, files.photo[0].originalFilename), (err) => {
             if(err){
                 console.log(err);
             }
@@ -50,7 +56,7 @@ app.post("/uploads",(req,res) => {
 
 app.post('/pdf', (req, res) => {
     var str = req.body.msg;
-     filePath = __dirname+`/${str}.pdf`;
+     filePath = path.join(__dirname, `${str}.pdf`);
     res.send('done')
   });
 app.get('/pdf',(req,res) => {
