@@ -1,38 +1,35 @@
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
 
 const sections = [
   {
-    tag: 'Our Philosophy',
-    title: 'Precision Engineering',
+    title: 'Tradition of Quality',
     subtitle:
-      'Delivering unparalleled performance through meticulous design and advanced technology that sets new industry standards.',
+      'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis sentium voluptatum deleniti atque corrupt quos dolores et',
     description:
-      'Every AesthetiQ Pro device is engineered with surgical precision, combining decades of research with cutting-edge innovation. Our commitment to excellence ensures that practitioners can deliver transformative results with confidence, safety, and consistency across every treatment.',
+      'At vero eos et accusamus et iusto odio dignissimos ducimus blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate provident, similique sunt in culpa qui officia deser animi. At vero eos et accusamus et iusto odio ducimus qui blanditiis',
     cta: 'Discover',
     href: '#products',
     image:
-      'https://images.unsplash.com/photo-1581595220892-b0739db3ba8c?w=800&q=80',
+      'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=800&q=80',
     reverse: false,
   },
   {
-    tag: 'Innovation',
-    title: 'Science Meets Aesthetics',
+    title: 'Nature is our friend',
     subtitle:
-      'Pioneering the future of non-invasive treatments with intelligent systems that adapt to every patient\'s unique needs.',
+      'At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis sentium voluptatum deleniti atque corrupt quos dolores et',
     description:
-      'Our research-driven approach combines AI-powered diagnostics with proven clinical methodologies. Each device features real-time skin analysis, customizable treatment protocols, and intuitive interfaces that empower practitioners to achieve optimal outcomes for every patient.',
+      'At vero eos et accusamus et iusto odio dignissimos ducimus blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate provident, similique sunt in culpa qui officia deser animi. At vero eos et accusamus et iusto odio ducimus qui blanditiis',
     cta: 'Discover',
     href: '#gallery',
     image:
-      'https://images.unsplash.com/photo-1559757175-5700dde675bc?w=800&q=80',
+      'https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=800&q=80',
     reverse: true,
   },
 ];
 
 export default function AboutSection() {
   return (
-    <section id="about" className="py-24 bg-white">
+    <section id="about" className="py-28 bg-white">
       {sections.map((section, i) => (
         <div
           key={i}
@@ -48,18 +45,11 @@ export default function AboutSection() {
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="lg:w-1/2"
           >
-            <div className="relative">
-              <img
-                src={section.image}
-                alt={section.title}
-                className="w-full h-[500px] object-cover"
-              />
-              <div
-                className={`absolute -bottom-6 ${
-                  section.reverse ? '-right-6' : '-left-6'
-                } w-32 h-32 border-2 border-gold -z-10`}
-              />
-            </div>
+            <img
+              src={section.image}
+              alt={section.title}
+              className="w-full h-[500px] object-cover"
+            />
           </motion.div>
 
           {/* Content */}
@@ -70,25 +60,20 @@ export default function AboutSection() {
             transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
             className="lg:w-1/2"
           >
-            <span className="text-gold text-xs font-semibold tracking-[0.3em] uppercase">
-              {section.tag}
-            </span>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary mt-4 mb-6 leading-tight">
+            <h2 className="text-3xl md:text-4xl text-gold font-bold leading-tight uppercase tracking-wide">
               {section.title}
             </h2>
-            <h5 className="text-lg md:text-xl text-primary/80 font-medium leading-relaxed mb-6">
+            <h5 className="text-base md:text-lg text-primary/80 italic leading-relaxed mt-6 mb-6" style={{ fontFamily: 'var(--font-heading)' }}>
               {section.subtitle}
             </h5>
-            <p className="text-muted leading-relaxed mb-8">{section.description}</p>
+            <p className="text-muted leading-relaxed mb-8 text-sm">
+              {section.description}
+            </p>
             <a
               href={section.href}
-              className="inline-flex items-center gap-3 border-2 border-primary text-primary px-8 py-3.5 text-sm font-semibold tracking-widest uppercase hover:bg-primary hover:text-white transition-all duration-300 group"
+              className="inline-block border border-primary text-primary px-10 py-3.5 text-xs font-medium tracking-[0.2em] uppercase hover:bg-primary hover:text-white transition-all duration-300"
             >
               {section.cta}
-              <ArrowRight
-                size={16}
-                className="group-hover:translate-x-1 transition-transform"
-              />
             </a>
           </motion.div>
         </div>

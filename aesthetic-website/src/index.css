@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -12,6 +13,7 @@
   --color-gold-light: #e8d5a8;
   --font-heading: 'Playfair Display', serif;
   --font-body: 'Raleway', sans-serif;
+  --font-script: 'Great Vibes', cursive;
 }
 
 html {
@@ -56,6 +58,8 @@ h1, h2, h3, h4, h5, h6 {
 .swiper-pagination-bullet {
   background: var(--color-secondary) !important;
   opacity: 0.5 !important;
+  width: 10px !important;
+  height: 10px !important;
 }
 
 .swiper-pagination-bullet-active {
@@ -65,7 +69,18 @@ h1, h2, h3, h4, h5, h6 {
 
 .swiper-button-next,
 .swiper-button-prev {
-  color: var(--color-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  font-size: 20px !important;
+  font-weight: 100 !important;
+}
+
+/* Script font class */
+.font-script {
+  font-family: var(--font-script);
 }
 
 /* Animation keyframes */
@@ -112,4 +127,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .animate-slideInRight {
   animation: slideInRight 0.8s ease-out forwards;
+}
+
+/* Botanical decoration styles */
+.botanical-decoration {
+  pointer-events: none;
+  opacity: 0.15;
 }

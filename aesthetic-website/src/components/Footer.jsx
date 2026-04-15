@@ -1,151 +1,95 @@
-import { ArrowRight } from 'lucide-react';
-
 export default function Footer() {
   return (
     <footer className="bg-dark text-white">
-      {/* Main Footer */}
       <div className="max-w-7xl mx-auto px-6 py-20">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
-          {/* Brand */}
-          <div className="lg:col-span-1">
+        <div className="grid md:grid-cols-3 gap-12 items-start">
+          {/* Contact */}
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-[0.15em] mb-6">
+              Contact
+            </h4>
+            <div className="space-y-3">
+              <p className="text-white/60 text-sm italic" style={{ fontFamily: 'var(--font-heading)' }}>
+                Address: <a href="#" className="hover:text-gold transition-colors">Seestrasse 21, Zurich</a>
+              </p>
+              <p className="text-white/60 text-sm italic" style={{ fontFamily: 'var(--font-heading)' }}>
+                E-mail: <a href="mailto:info@aesthetiqpro.com" className="hover:text-gold transition-colors">info@aesthetiqpro.com</a>
+              </p>
+              <p className="text-white/60 text-sm italic" style={{ fontFamily: 'var(--font-heading)' }}>
+                Phone: <a href="tel:+99411725312" className="hover:text-gold transition-colors">+ 99 411 725 39 12</a>
+              </p>
+            </div>
+          </div>
+
+          {/* Brand - Center */}
+          <div className="text-center">
             <a href="#home" className="inline-block mb-6">
-              <span
-                className="text-2xl font-bold tracking-wider"
-                style={{ fontFamily: 'var(--font-heading)' }}
-              >
-                Aestheti<span className="text-gold">Q</span> Pro
+              <span className="text-4xl md:text-5xl font-script text-white">
+                aesthetiq
               </span>
             </a>
-            <p className="text-white/60 text-sm leading-relaxed mb-6">
-              An industry leader in professional aesthetic devices, built
-              specifically so your clinic can deliver transformative results
-              with confidence.
+            <p className="text-white/50 text-sm italic leading-relaxed max-w-sm mx-auto" style={{ fontFamily: 'var(--font-heading)' }}>
+              An oasis of online beauty built specifically so your new cosmetics site can take everyone&apos;s breaths away.
             </p>
-            <div className="flex gap-4">
-              {['F', 'I', 'L', 'X'].map((letter, i) => (
+            <div className="flex gap-3 justify-center mt-6">
+              {[
+                { letter: 'f', label: 'Facebook' },
+                { letter: 't', label: 'Twitter' },
+                { letter: 'g', label: 'Google' },
+                { letter: 'p', label: 'Pinterest' },
+              ].map((social, i) => (
                 <a
                   key={i}
                   href="#"
-                  className="w-9 h-9 border border-white/20 flex items-center justify-center text-xs text-white/60 hover:text-gold hover:border-gold transition-all duration-300"
+                  className="w-9 h-9 border border-white/20 flex items-center justify-center text-xs text-white/50 hover:text-gold hover:border-gold transition-all duration-300"
+                  aria-label={social.label}
                 >
-                  {letter}
+                  {social.letter}
                 </a>
               ))}
             </div>
           </div>
 
           {/* Collections */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6">Collections</h4>
+          <div className="text-right">
+            <h4 className="text-sm font-semibold uppercase tracking-[0.15em] mb-6">
+              Collections
+            </h4>
             <ul className="space-y-3">
               {[
-                'Laser Systems',
-                'RF & Radiofrequency',
-                'IPL Technology',
-                'HIFU Devices',
-                'Body Contouring',
+                'Glowing skin is a result',
+                'ABCDEH Beauty – Forever Young',
+                'Pure Skin Solutions',
               ].map((item) => (
                 <li key={item}>
                   <a
                     href="#products"
-                    className="text-white/60 text-sm hover:text-gold transition-colors duration-300 flex items-center gap-2 group"
+                    className="text-white/50 text-sm italic hover:text-gold transition-colors duration-300"
+                    style={{ fontFamily: 'var(--font-heading)' }}
                   >
-                    <ArrowRight
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
                     {item}
                   </a>
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6">Quick Links</h4>
-            <ul className="space-y-3">
-              {[
-                'Privacy Policy',
-                'Terms & Conditions',
-                'About Us',
-                'Shipping Info',
-                'Returns & Exchanges',
-                'Contact',
-              ].map((item) => (
-                <li key={item}>
-                  <a
-                    href="#"
-                    className="text-white/60 text-sm hover:text-gold transition-colors duration-300 flex items-center gap-2 group"
-                  >
-                    <ArrowRight
-                      size={12}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Newsletter */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6">Stay In Touch</h4>
-            <p className="text-white/60 text-sm leading-relaxed mb-6">
-              Subscribe to receive the latest product updates, industry
-              insights, and exclusive offers.
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                alert('Thank you for subscribing!');
-              }}
-              className="flex"
-            >
-              <input
-                type="email"
-                placeholder="Your email"
-                required
-                className="flex-1 px-4 py-3 bg-white/5 border border-white/20 text-white text-sm placeholder-white/40 focus:border-gold focus:outline-none transition-colors"
-              />
-              <button
-                type="submit"
-                className="bg-gold text-white px-5 py-3 text-sm font-semibold hover:bg-accent transition-colors duration-300"
-              >
-                Send
-              </button>
-            </form>
           </div>
         </div>
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom links row */}
       <div className="border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-white/40 text-sm">
-            &copy; {new Date().getFullYear()} AesthetiQ Pro. All rights reserved.
-          </p>
-          <div className="flex gap-6">
-            <a
-              href="#"
-              className="text-white/40 text-sm hover:text-gold transition-colors"
-            >
-              Privacy
-            </a>
-            <a
-              href="#"
-              className="text-white/40 text-sm hover:text-gold transition-colors"
-            >
-              Terms
-            </a>
-            <a
-              href="#"
-              className="text-white/40 text-sm hover:text-gold transition-colors"
-            >
-              Sitemap
-            </a>
-          </div>
+        <div className="max-w-7xl mx-auto px-6 py-5 flex flex-wrap justify-center gap-6">
+          {['Privacy Policy', 'Terms and Conditions', 'About', 'Shipping Info', 'Returns/Exchanges', 'Contact'].map(
+            (item) => (
+              <a
+                key={item}
+                href="#"
+                className="text-white/40 text-xs hover:text-gold transition-colors tracking-wider"
+              >
+                {item}
+              </a>
+            )
+          )}
         </div>
       </div>
     </footer>

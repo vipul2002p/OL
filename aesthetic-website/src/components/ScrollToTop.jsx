@@ -17,11 +17,13 @@ export default function ScrollToTop() {
   return (
     <button
       onClick={scrollToTop}
-      className={`fixed bottom-8 right-8 z-50 w-12 h-12 bg-gold text-white flex items-center justify-center shadow-lg hover:bg-accent transition-all duration-300 ${
-        visible
-          ? 'opacity-100 translate-y-0'
-          : 'opacity-0 translate-y-4 pointer-events-none'
-      }`}
+      className="fixed bottom-8 right-8 z-50 w-12 h-12 bg-gold text-white flex items-center justify-center shadow-lg hover:bg-accent"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(1rem)',
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'opacity 0.3s ease, transform 0.3s ease',
+      }}
     >
       <ChevronUp size={20} />
     </button>
