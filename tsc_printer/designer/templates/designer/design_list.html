@@ -1,0 +1,71 @@
+{% extends "designer/base.html" %}
+{% block title %}My Designs - TSC Label Designer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-grid"></i> My Designs</h2>
+    <div class="d-flex gap-2">
+        <form action="{% url 'designer:import_btw' %}" method="post" enctype="multipart/form-data" class="d-inline">
+            {% csrf_token %}
+            <label class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-upload"></i> Import BTW
+                <input type="file" name="btw_file" accept=".btw" hidden onchange="this.form.submit()">
+            </label>
+        </form>
+        <a href="{% url 'designer:design_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Design
+        </a>
+    </div>
+</div>
+
+{% if designs %}
+<div class="row g-3">
+    {% for design in designs %}
+    <div class="col-md-4 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ design.name }}</h5>
+                <p class="text-muted small mb-1">{{ design.width_mm }} x {{ design.height_mm }} mm</p>
+                <p class="text-muted small mb-2">DPI: {{ design.dpi }} | {{ design.columns }} col</p>
+                {% if design.description %}
+                <p class="small">{{ design.description|truncatewords:20 }}</p>
+                {% endif %}
+                <p class="text-muted small">Updated: {{ design.updated_at|date:"M d, Y H:i" }}</p>
+            </div>
+            <div class="card-footer bg-transparent border-0 pb-3">
+                <div class="d-flex gap-1 flex-wrap">
+                    <a href="{% url 'designer:editor' design.id %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                    <a href="{% url 'designer:download_btw' design.id %}" class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-download"></i> BTW
+                    </a>
+                    <a href="{% url 'designer:download_prn' design.id %}" class="btn btn-outline-info btn-sm">
+                        <i class="bi bi-download"></i> PRN
+                    </a>
+                    <form action="{% url 'designer:design_duplicate' design.id %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-copy"></i></button>
+                    </form>
+                    <form action="{% url 'designer:design_delete' design.id %}" method="post" class="d-inline"
+                          onsubmit="return confirm('Delete this design?')">
+                        {% csrf_token %}
+                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-inbox display-1 text-muted"></i>
+    <h4 class="mt-3 text-muted">No designs yet</h4>
+    <p class="text-muted">Create your first label design or import a BTW file.</p>
+    <a href="{% url 'designer:design_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> Create New Design
+    </a>
+</div>
+{% endif %}
+{% endblock %}

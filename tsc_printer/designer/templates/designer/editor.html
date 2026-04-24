@@ -1,0 +1,755 @@
+{% extends "designer/base.html" %}
+{% block title %}{{ design.name }} - Editor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .editor-container { display: flex; gap: 16px; min-height: calc(100vh - 140px); }
+    .toolbar {
+        width: 260px; flex-shrink: 0; background: #fff;
+        border-radius: 12px; padding: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow-y: auto; max-height: calc(100vh - 140px);
+    }
+    .canvas-area {
+        flex: 1; background: #fff; border-radius: 12px;
+        padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        display: flex; flex-direction: column; align-items: center;
+    }
+    .canvas-wrapper {
+        border: 2px dashed #dee2e6; padding: 8px;
+        background: #f8f9fa; display: inline-block;
+    }
+    .properties-panel {
+        width: 280px; flex-shrink: 0; background: #fff;
+        border-radius: 12px; padding: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        overflow-y: auto; max-height: calc(100vh - 140px);
+    }
+    .tool-btn {
+        width: 100%; text-align: left; padding: 8px 12px;
+        border: 1px solid #dee2e6; border-radius: 8px;
+        background: #fff; cursor: pointer; margin-bottom: 6px;
+        transition: all 0.15s;
+    }
+    .tool-btn:hover { background: #e8f0fe; border-color: #0d6efd; }
+    .tool-btn.active { background: #0d6efd; color: #fff; border-color: #0d6efd; }
+    .section-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #6c757d; margin-top: 16px; margin-bottom: 8px; }
+    .prop-group { margin-bottom: 12px; }
+    .prop-group label { font-size: 0.8rem; font-weight: 600; color: #495057; }
+    .prop-group input, .prop-group select { font-size: 0.85rem; }
+    #statusBar { font-size: 0.8rem; color: #6c757d; padding: 8px 0; }
+    .save-indicator { transition: opacity 0.3s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0" id="designTitle">{{ design.name }}</h4>
+        <small class="text-muted">{{ design.width_mm }} x {{ design.height_mm }} mm | {{ design.dpi }} DPI</small>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-success btn-sm" onclick="saveDesign()">
+            <i class="bi bi-save"></i> Save
+        </button>
+        <a href="{% url 'designer:download_btw' design.id %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-download"></i> BTW
+        </a>
+        <a href="{% url 'designer:download_prn' design.id %}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-download"></i> PRN
+        </a>
+        <a href="{% url 'designer:design_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<div class="editor-container">
+    <!-- Left Toolbar -->
+    <div class="toolbar">
+        <div class="section-title">Add Elements</div>
+
+        <button class="tool-btn" onclick="addText()">
+            <i class="bi bi-fonts"></i> Text
+        </button>
+        <button class="tool-btn" onclick="addBarcode()">
+            <i class="bi bi-upc-scan"></i> Barcode (Code128)
+        </button>
+        <button class="tool-btn" onclick="addQRCode()">
+            <i class="bi bi-qr-code"></i> QR Code
+        </button>
+        <button class="tool-btn" onclick="addRectangle()">
+            <i class="bi bi-square"></i> Rectangle
+        </button>
+        <button class="tool-btn" onclick="addLine()">
+            <i class="bi bi-dash-lg"></i> Line
+        </button>
+        <button class="tool-btn" onclick="addFilledRect()">
+            <i class="bi bi-square-fill"></i> Filled Rectangle
+        </button>
+        <button class="tool-btn" onclick="document.getElementById('imageUpload').click()">
+            <i class="bi bi-image"></i> Image
+        </button>
+        <input type="file" id="imageUpload" accept="image/*" hidden onchange="addImage(event)">
+
+        <div class="section-title">Actions</div>
+        <button class="tool-btn" onclick="deleteSelected()">
+            <i class="bi bi-trash text-danger"></i> Delete Selected
+        </button>
+        <button class="tool-btn" onclick="cloneSelected()">
+            <i class="bi bi-copy"></i> Duplicate Selected
+        </button>
+        <button class="tool-btn" onclick="bringToFront()">
+            <i class="bi bi-front"></i> Bring to Front
+        </button>
+        <button class="tool-btn" onclick="sendToBack()">
+            <i class="bi bi-back"></i> Send to Back
+        </button>
+        <button class="tool-btn" onclick="clearCanvas()">
+            <i class="bi bi-x-circle text-danger"></i> Clear All
+        </button>
+
+        <div class="section-title">Label Settings</div>
+        <div class="prop-group">
+            <label>Width (mm)</label>
+            <input type="number" id="labelWidth" class="form-control form-control-sm"
+                   value="{{ design.width_mm }}" min="5" max="300" step="0.5" onchange="updateCanvasSize()">
+        </div>
+        <div class="prop-group">
+            <label>Height (mm)</label>
+            <input type="number" id="labelHeight" class="form-control form-control-sm"
+                   value="{{ design.height_mm }}" min="5" max="300" step="0.5" onchange="updateCanvasSize()">
+        </div>
+        <div class="prop-group">
+            <label>DPI</label>
+            <select id="labelDpi" class="form-select form-select-sm" onchange="updateCanvasSize()">
+                <option value="203" {% if design.dpi == 203 %}selected{% endif %}>203</option>
+                <option value="300" {% if design.dpi == 300 %}selected{% endif %}>300</option>
+                <option value="600" {% if design.dpi == 600 %}selected{% endif %}>600</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div class="canvas-area">
+        <div class="canvas-wrapper">
+            <canvas id="labelCanvas"></canvas>
+        </div>
+        <div id="statusBar">
+            <span id="saveStatus" class="save-indicator">Ready</span> |
+            Zoom: <span id="zoomLevel">100</span>% |
+            Objects: <span id="objectCount">0</span>
+        </div>
+    </div>
+
+    <!-- Right Properties Panel -->
+    <div class="properties-panel" id="propsPanel">
+        <div class="section-title">Properties</div>
+        <div id="noSelection" class="text-muted small">Select an element to edit its properties.</div>
+
+        <div id="commonProps" style="display:none;">
+            <div class="prop-group">
+                <label>X Position</label>
+                <input type="number" id="propLeft" class="form-control form-control-sm" onchange="updateProp('left', this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Y Position</label>
+                <input type="number" id="propTop" class="form-control form-control-sm" onchange="updateProp('top', this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Width</label>
+                <input type="number" id="propWidth" class="form-control form-control-sm" onchange="updateScaledWidth(this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Height</label>
+                <input type="number" id="propHeight" class="form-control form-control-sm" onchange="updateScaledHeight(this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Rotation</label>
+                <input type="number" id="propAngle" class="form-control form-control-sm" min="0" max="360" onchange="updateProp('angle', this.value)">
+            </div>
+        </div>
+
+        <div id="textProps" style="display:none;">
+            <div class="section-title">Text Properties</div>
+            <div class="prop-group">
+                <label>Text Content</label>
+                <textarea id="propText" class="form-control form-control-sm" rows="2" onchange="updateTextContent(this.value)"></textarea>
+            </div>
+            <div class="prop-group">
+                <label>Font Size</label>
+                <input type="number" id="propFontSize" class="form-control form-control-sm"
+                       min="6" max="200" onchange="updateProp('fontSize', parseInt(this.value))">
+            </div>
+            <div class="prop-group">
+                <label>Font Weight</label>
+                <select id="propFontWeight" class="form-select form-select-sm" onchange="updateProp('fontWeight', this.value)">
+                    <option value="normal">Normal</option>
+                    <option value="bold">Bold</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Font Family</label>
+                <select id="propFontFamily" class="form-select form-select-sm" onchange="updateProp('fontFamily', this.value)">
+                    <option value="Arial">Arial</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="monospace">Monospace</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Text Color</label>
+                <input type="color" id="propFill" class="form-control form-control-sm form-control-color"
+                       value="#000000" onchange="updateProp('fill', this.value)">
+            </div>
+        </div>
+
+        <div id="barcodeProps" style="display:none;">
+            <div class="section-title">Barcode Properties</div>
+            <div class="prop-group">
+                <label>Barcode Data</label>
+                <input type="text" id="propBarcodeData" class="form-control form-control-sm"
+                       onchange="updateBarcodeData(this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Barcode Type</label>
+                <select id="propBarcodeType" class="form-select form-select-sm" onchange="updateBarcodeType(this.value)">
+                    <option value="128">Code 128</option>
+                    <option value="39">Code 39</option>
+                    <option value="EAN13">EAN-13</option>
+                    <option value="EAN8">EAN-8</option>
+                </select>
+            </div>
+            <div class="prop-group">
+                <label>Bar Height (px)</label>
+                <input type="number" id="propBarcodeHeight" class="form-control form-control-sm"
+                       min="20" max="200" onchange="updateBarcodeHeight(this.value)">
+            </div>
+            <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="propShowBarcodeText"
+                       onchange="updateShowBarcodeText(this.checked)" checked>
+                <label class="form-check-label small" for="propShowBarcodeText">Show text below barcode</label>
+            </div>
+        </div>
+
+        <div id="qrcodeProps" style="display:none;">
+            <div class="section-title">QR Code Properties</div>
+            <div class="prop-group">
+                <label>QR Data</label>
+                <input type="text" id="propQrData" class="form-control form-control-sm"
+                       onchange="updateQrData(this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Size</label>
+                <input type="number" id="propQrSize" class="form-control form-control-sm"
+                       min="2" max="12" onchange="updateQrSize(this.value)">
+            </div>
+        </div>
+
+        <div id="rectProps" style="display:none;">
+            <div class="section-title">Shape Properties</div>
+            <div class="prop-group">
+                <label>Stroke Color</label>
+                <input type="color" id="propStroke" class="form-control form-control-sm form-control-color"
+                       value="#000000" onchange="updateProp('stroke', this.value)">
+            </div>
+            <div class="prop-group">
+                <label>Stroke Width</label>
+                <input type="number" id="propStrokeWidth" class="form-control form-control-sm"
+                       min="0" max="20" onchange="updateProp('strokeWidth', parseInt(this.value))">
+            </div>
+            <div class="prop-group">
+                <label>Fill Color</label>
+                <input type="color" id="propRectFill" class="form-control form-control-sm form-control-color"
+                       value="#ffffff" onchange="updateProp('fill', this.value)">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+const DESIGN_ID = "{{ design.id }}";
+const SAVE_URL = "{% url 'designer:design_save' design.id %}";
+
+// Canvas setup: scale mm to screen pixels
+const MM_TO_PX = 3.78; // ~96 DPI screen
+let labelWidthMM = {{ design.width_mm }};
+let labelHeightMM = {{ design.height_mm }};
+
+let canvasWidth = Math.round(labelWidthMM * MM_TO_PX);
+let canvasHeight = Math.round(labelHeightMM * MM_TO_PX);
+
+const canvas = new fabric.Canvas('labelCanvas', {
+    width: canvasWidth,
+    height: canvasHeight,
+    backgroundColor: '#ffffff',
+    selection: true,
+});
+
+// Load existing canvas data
+{% if design.canvas_json and design.canvas_json != '{}' %}
+try {
+    const savedData = JSON.parse('{{ design.canvas_json|escapejs }}');
+    if (savedData && savedData.objects && savedData.objects.length > 0) {
+        canvas.loadFromJSON(savedData, function() {
+            canvas.renderAll();
+            updateObjectCount();
+        });
+    }
+} catch(e) {
+    console.log('No saved canvas data or parse error:', e);
+}
+{% endif %}
+
+// Canvas events
+canvas.on('selection:created', updatePropertiesPanel);
+canvas.on('selection:updated', updatePropertiesPanel);
+canvas.on('selection:cleared', clearPropertiesPanel);
+canvas.on('object:modified', updatePropertiesPanel);
+canvas.on('object:added', updateObjectCount);
+canvas.on('object:removed', updateObjectCount);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelected();
+    }
+    if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        cloneSelected();
+    }
+    if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        saveDesign();
+    }
+    if (e.ctrlKey && e.key === 'z') {
+        // Basic undo - not implemented yet
+    }
+});
+
+function updateCanvasSize() {
+    labelWidthMM = parseFloat(document.getElementById('labelWidth').value) || 50;
+    labelHeightMM = parseFloat(document.getElementById('labelHeight').value) || 30;
+    canvasWidth = Math.round(labelWidthMM * MM_TO_PX);
+    canvasHeight = Math.round(labelHeightMM * MM_TO_PX);
+    canvas.setWidth(canvasWidth);
+    canvas.setHeight(canvasHeight);
+    canvas.renderAll();
+}
+
+function updateObjectCount() {
+    document.getElementById('objectCount').textContent = canvas.getObjects().length;
+}
+
+// === ADD ELEMENTS ===
+
+function addText() {
+    const text = new fabric.IText('Label Text', {
+        left: 20,
+        top: 20,
+        fontSize: 20,
+        fontFamily: 'Arial',
+        fill: '#000000',
+        fontWeight: 'normal',
+    });
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.renderAll();
+}
+
+function addBarcode() {
+    const barcodeData = '123456789012';
+    const tempCanvas = document.createElement('canvas');
+    try {
+        JsBarcode(tempCanvas, barcodeData, {
+            format: 'CODE128',
+            width: 2,
+            height: 50,
+            displayValue: true,
+            fontSize: 12,
+            margin: 2,
+        });
+        const imgObj = new fabric.Image(tempCanvas, {
+            left: 20,
+            top: 20,
+        });
+        imgObj.set({
+            type_custom: 'barcode',
+            barcodeData: barcodeData,
+            barcodeType: '128',
+            barcodeHeight: 50,
+            showBarcodeText: true,
+        });
+        canvas.add(imgObj);
+        canvas.setActiveObject(imgObj);
+        canvas.renderAll();
+    } catch(e) {
+        alert('Error creating barcode: ' + e.message);
+    }
+}
+
+function addQRCode() {
+    const qrData = 'https://example.com';
+    const qr = qrcode(0, 'L');
+    qr.addData(qrData);
+    qr.make();
+    const qrImg = qr.createDataUrl(4, 0);
+    fabric.Image.fromURL(qrImg, function(img) {
+        img.set({
+            left: 20,
+            top: 20,
+            type_custom: 'qrcode',
+            qrData: qrData,
+            qrSize: 4,
+        });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+    });
+}
+
+function addRectangle() {
+    const rect = new fabric.Rect({
+        left: 20,
+        top: 20,
+        width: 100,
+        height: 60,
+        fill: 'transparent',
+        stroke: '#000000',
+        strokeWidth: 2,
+    });
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.renderAll();
+}
+
+function addFilledRect() {
+    const rect = new fabric.Rect({
+        left: 20,
+        top: 20,
+        width: 100,
+        height: 60,
+        fill: '#000000',
+        stroke: '#000000',
+        strokeWidth: 0,
+    });
+    canvas.add(rect);
+    canvas.setActiveObject(rect);
+    canvas.renderAll();
+}
+
+function addLine() {
+    const line = new fabric.Line([20, 20, 200, 20], {
+        stroke: '#000000',
+        strokeWidth: 2,
+    });
+    canvas.add(line);
+    canvas.setActiveObject(line);
+    canvas.renderAll();
+}
+
+function addImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        fabric.Image.fromURL(e.target.result, function(img) {
+            // Scale image to fit within canvas
+            const maxW = canvasWidth * 0.8;
+            const maxH = canvasHeight * 0.8;
+            if (img.width > maxW || img.height > maxH) {
+                const scale = Math.min(maxW / img.width, maxH / img.height);
+                img.scale(scale);
+            }
+            img.set({ left: 20, top: 20 });
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+        });
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+
+// === ACTIONS ===
+
+function deleteSelected() {
+    const active = canvas.getActiveObjects();
+    if (active.length) {
+        active.forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+}
+
+function cloneSelected() {
+    const active = canvas.getActiveObject();
+    if (!active) return;
+    active.clone(function(cloned) {
+        cloned.set({ left: active.left + 15, top: active.top + 15 });
+        canvas.add(cloned);
+        canvas.setActiveObject(cloned);
+        canvas.renderAll();
+    });
+}
+
+function bringToFront() {
+    const active = canvas.getActiveObject();
+    if (active) { canvas.bringToFront(active); canvas.renderAll(); }
+}
+
+function sendToBack() {
+    const active = canvas.getActiveObject();
+    if (active) { canvas.sendToBack(active); canvas.renderAll(); }
+}
+
+function clearCanvas() {
+    if (confirm('Clear all elements from the canvas?')) {
+        canvas.clear();
+        canvas.backgroundColor = '#ffffff';
+        canvas.renderAll();
+        updateObjectCount();
+    }
+}
+
+// === PROPERTIES PANEL ===
+
+function updatePropertiesPanel() {
+    const obj = canvas.getActiveObject();
+    if (!obj) { clearPropertiesPanel(); return; }
+
+    document.getElementById('noSelection').style.display = 'none';
+    document.getElementById('commonProps').style.display = 'block';
+
+    document.getElementById('propLeft').value = Math.round(obj.left);
+    document.getElementById('propTop').value = Math.round(obj.top);
+    document.getElementById('propWidth').value = Math.round(obj.getScaledWidth());
+    document.getElementById('propHeight').value = Math.round(obj.getScaledHeight());
+    document.getElementById('propAngle').value = Math.round(obj.angle);
+
+    // Hide all type-specific panels
+    document.getElementById('textProps').style.display = 'none';
+    document.getElementById('barcodeProps').style.display = 'none';
+    document.getElementById('qrcodeProps').style.display = 'none';
+    document.getElementById('rectProps').style.display = 'none';
+
+    if (obj.type === 'i-text' || obj.type === 'textbox' || obj.type === 'text') {
+        document.getElementById('textProps').style.display = 'block';
+        document.getElementById('propText').value = obj.text || '';
+        document.getElementById('propFontSize').value = obj.fontSize || 20;
+        document.getElementById('propFontWeight').value = obj.fontWeight || 'normal';
+        document.getElementById('propFontFamily').value = obj.fontFamily || 'Arial';
+        document.getElementById('propFill').value = obj.fill || '#000000';
+    } else if (obj.type_custom === 'barcode') {
+        document.getElementById('barcodeProps').style.display = 'block';
+        document.getElementById('propBarcodeData').value = obj.barcodeData || '';
+        document.getElementById('propBarcodeType').value = obj.barcodeType || '128';
+        document.getElementById('propBarcodeHeight').value = obj.barcodeHeight || 50;
+        document.getElementById('propShowBarcodeText').checked = obj.showBarcodeText !== false;
+    } else if (obj.type_custom === 'qrcode') {
+        document.getElementById('qrcodeProps').style.display = 'block';
+        document.getElementById('propQrData').value = obj.qrData || '';
+        document.getElementById('propQrSize').value = obj.qrSize || 4;
+    } else if (obj.type === 'rect' || obj.type === 'line') {
+        document.getElementById('rectProps').style.display = 'block';
+        document.getElementById('propStroke').value = obj.stroke || '#000000';
+        document.getElementById('propStrokeWidth').value = obj.strokeWidth || 1;
+        if (obj.type === 'rect') {
+            document.getElementById('propRectFill').value = obj.fill === 'transparent' ? '#ffffff' : (obj.fill || '#ffffff');
+        }
+    }
+}
+
+function clearPropertiesPanel() {
+    document.getElementById('noSelection').style.display = 'block';
+    document.getElementById('commonProps').style.display = 'none';
+    document.getElementById('textProps').style.display = 'none';
+    document.getElementById('barcodeProps').style.display = 'none';
+    document.getElementById('qrcodeProps').style.display = 'none';
+    document.getElementById('rectProps').style.display = 'none';
+}
+
+function updateProp(prop, value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    if (typeof value === 'string' && !isNaN(value) && prop !== 'fill' && prop !== 'stroke' && prop !== 'fontFamily' && prop !== 'fontWeight') {
+        value = parseFloat(value);
+    }
+    obj.set(prop, value);
+    canvas.renderAll();
+}
+
+function updateScaledWidth(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    const newWidth = parseFloat(value);
+    obj.set('scaleX', newWidth / obj.width);
+    canvas.renderAll();
+}
+
+function updateScaledHeight(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    const newHeight = parseFloat(value);
+    obj.set('scaleY', newHeight / obj.height);
+    canvas.renderAll();
+}
+
+function updateTextContent(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.set('text', value);
+    canvas.renderAll();
+}
+
+function updateBarcodeData(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.barcodeData = value;
+    regenerateBarcode(obj);
+}
+
+function updateBarcodeType(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.barcodeType = value;
+    regenerateBarcode(obj);
+}
+
+function updateBarcodeHeight(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.barcodeHeight = parseInt(value);
+    regenerateBarcode(obj);
+}
+
+function updateShowBarcodeText(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.showBarcodeText = value;
+    regenerateBarcode(obj);
+}
+
+function regenerateBarcode(obj) {
+    const tempCanvas = document.createElement('canvas');
+    const formatMap = { '128': 'CODE128', '39': 'CODE39', 'EAN13': 'EAN13', 'EAN8': 'EAN8' };
+    try {
+        JsBarcode(tempCanvas, obj.barcodeData || '123456789012', {
+            format: formatMap[obj.barcodeType] || 'CODE128',
+            width: 2,
+            height: obj.barcodeHeight || 50,
+            displayValue: obj.showBarcodeText !== false,
+            fontSize: 12,
+            margin: 2,
+        });
+        const oldLeft = obj.left;
+        const oldTop = obj.top;
+        const idx = canvas.getObjects().indexOf(obj);
+        canvas.remove(obj);
+
+        const newImg = new fabric.Image(tempCanvas, { left: oldLeft, top: oldTop });
+        newImg.set({
+            type_custom: 'barcode',
+            barcodeData: obj.barcodeData,
+            barcodeType: obj.barcodeType,
+            barcodeHeight: obj.barcodeHeight,
+            showBarcodeText: obj.showBarcodeText,
+        });
+        canvas.insertAt(newImg, idx);
+        canvas.setActiveObject(newImg);
+        canvas.renderAll();
+    } catch(e) {
+        alert('Invalid barcode data for this format: ' + e.message);
+    }
+}
+
+function updateQrData(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.qrData = value;
+    regenerateQR(obj);
+}
+
+function updateQrSize(value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    obj.qrSize = parseInt(value);
+    regenerateQR(obj);
+}
+
+function regenerateQR(obj) {
+    try {
+        const qr = qrcode(0, 'L');
+        qr.addData(obj.qrData || 'https://example.com');
+        qr.make();
+        const qrImg = qr.createDataUrl(obj.qrSize || 4, 0);
+        const oldLeft = obj.left;
+        const oldTop = obj.top;
+        const idx = canvas.getObjects().indexOf(obj);
+        canvas.remove(obj);
+
+        fabric.Image.fromURL(qrImg, function(img) {
+            img.set({
+                left: oldLeft,
+                top: oldTop,
+                type_custom: 'qrcode',
+                qrData: obj.qrData,
+                qrSize: obj.qrSize,
+            });
+            canvas.insertAt(img, idx);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+        });
+    } catch(e) {
+        alert('Error generating QR code: ' + e.message);
+    }
+}
+
+// === SAVE ===
+
+function saveDesign() {
+    const status = document.getElementById('saveStatus');
+    status.textContent = 'Saving...';
+
+    const canvasJSON = canvas.toJSON(['type_custom', 'barcodeData', 'barcodeType', 'barcodeHeight', 'showBarcodeText', 'qrData', 'qrSize']);
+
+    const payload = {
+        canvas_json: canvasJSON,
+        name: document.getElementById('designTitle').textContent,
+        width_mm: parseFloat(document.getElementById('labelWidth').value),
+        height_mm: parseFloat(document.getElementById('labelHeight').value),
+        dpi: parseInt(document.getElementById('labelDpi').value),
+    };
+
+    fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            status.textContent = 'Saved!';
+            setTimeout(() => { status.textContent = 'Ready'; }, 2000);
+        } else {
+            status.textContent = 'Error: ' + (data.error || 'Unknown');
+        }
+    })
+    .catch(err => {
+        status.textContent = 'Save failed!';
+        console.error(err);
+    });
+}
+
+// Auto-save every 60 seconds
+setInterval(saveDesign, 60000);
+</script>
+{% endblock %}

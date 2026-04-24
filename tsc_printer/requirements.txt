@@ -1,0 +1,4 @@
+django>=4.2,<7.0
+pillow>=10.0
+python-barcode>=0.15
+qrcode>=7.4

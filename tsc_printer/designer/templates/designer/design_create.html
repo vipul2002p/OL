@@ -1,0 +1,111 @@
+{% extends "designer/base.html" %}
+{% block title %}New Design - TSC Label Designer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body p-4">
+                <h3 class="mb-4"><i class="bi bi-plus-circle"></i> New Label Design</h3>
+                <form method="post" action="{% url 'designer:design_create' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Design Name</label>
+                        <input type="text" name="name" class="form-control" required
+                               placeholder="e.g., Product Label 50x30">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control" rows="2"
+                                  placeholder="Optional description"></textarea>
+                    </div>
+
+                    <h5 class="mt-4 mb-3">Label Size</h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Width (mm)</label>
+                            <input type="number" name="width_mm" class="form-control"
+                                   value="50" min="5" max="300" step="0.5">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Height (mm)</label>
+                            <input type="number" name="height_mm" class="form-control"
+                                   value="30" min="5" max="300" step="0.5">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <div class="col-4">
+                            <label class="form-label">DPI</label>
+                            <select name="dpi" class="form-select">
+                                <option value="203" selected>203 DPI</option>
+                                <option value="300">300 DPI</option>
+                                <option value="600">600 DPI</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Columns</label>
+                            <input type="number" name="columns" class="form-control"
+                                   value="1" min="1" max="10">
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Gap (mm)</label>
+                            <input type="number" name="gap_mm" class="form-control"
+                                   value="3" min="0" max="20" step="0.5">
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4 mb-3">Printer Settings</h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Print Speed (1-10)</label>
+                            <input type="number" name="print_speed" class="form-control"
+                                   value="4" min="1" max="10">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Darkness (0-15)</label>
+                            <input type="number" name="print_darkness" class="form-control"
+                                   value="8" min="0" max="15">
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4 mb-3">Quick Presets</h5>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm preset-btn"
+                                data-width="50" data-height="30">50 x 30 mm</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm preset-btn"
+                                data-width="100" data-height="50">100 x 50 mm</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm preset-btn"
+                                data-width="40" data-height="20">40 x 20 mm</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm preset-btn"
+                                data-width="80" data-height="40">80 x 40 mm</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm preset-btn"
+                                data-width="60" data-height="40">60 x 40 mm</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm preset-btn"
+                                data-width="100" data-height="150">100 x 150 mm</button>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-pencil-square"></i> Open Designer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelector('[name="width_mm"]').value = btn.dataset.width;
+        document.querySelector('[name="height_mm"]').value = btn.dataset.height;
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+</script>
+{% endblock %}
