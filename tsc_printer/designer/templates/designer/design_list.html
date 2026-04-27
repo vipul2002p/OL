@@ -1,71 +1,353 @@
 {% extends "designer/base.html" %}
-{% block title %}My Designs - TSC Label Designer{% endblock %}
+{% block title %}File Manager - TSC Label Designer{% endblock %}
+{% block subtitle %}File Manager{% endblock %}
+{% block menu_file %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .file-manager { display: flex; height: 100%; }
+
+    /* Left sidebar - folder tree */
+    .fm-sidebar {
+        width: 220px; background: #181825; border-right: 1px solid #313244;
+        display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .fm-sidebar-header {
+        padding: 10px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+        color: #6c7086; letter-spacing: 1px; border-bottom: 1px solid #313244;
+    }
+    .fm-tree { padding: 8px 0; flex: 1; overflow-y: auto; }
+    .fm-tree-item {
+        display: flex; align-items: center; padding: 6px 16px; gap: 8px;
+        font-size: 12px; color: #a6adc8; cursor: pointer; transition: all 0.1s;
+        text-decoration: none; border-left: 2px solid transparent;
+    }
+    .fm-tree-item:hover { background: #1e1e2e; color: #cdd6f4; }
+    .fm-tree-item.active { background: #313244; color: #89b4fa; border-left-color: #89b4fa; }
+    .fm-tree-item i { font-size: 14px; width: 18px; text-align: center; }
+    .fm-tree-item .badge-count {
+        margin-left: auto; background: #45475a; color: #a6adc8;
+        font-size: 10px; padding: 1px 6px; border-radius: 8px;
+    }
+
+    /* Main content area */
+    .fm-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Toolbar */
+    .fm-toolbar {
+        padding: 8px 16px; background: #1e1e2e; border-bottom: 1px solid #313244;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .toolbar-sep { width: 1px; height: 20px; background: #313244; margin: 0 4px; }
+    .view-toggle {
+        display: flex; border: 1px solid #45475a; border-radius: 4px; overflow: hidden;
+    }
+    .view-toggle button {
+        background: transparent; border: none; color: #6c7086; padding: 3px 8px;
+        cursor: pointer; font-size: 12px;
+    }
+    .view-toggle button.active { background: #45475a; color: #cdd6f4; }
+    .view-toggle button:hover:not(.active) { color: #a6adc8; }
+
+    .fm-search {
+        margin-left: auto; position: relative;
+    }
+    .fm-search input {
+        background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+        font-size: 12px; padding: 4px 8px 4px 28px; border-radius: 4px; width: 200px;
+    }
+    .fm-search input:focus { outline: none; border-color: #89b4fa; }
+    .fm-search i { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: #6c7086; font-size: 12px; }
+
+    /* File list - table view */
+    .fm-file-list { flex: 1; overflow-y: auto; padding: 0; }
+    .fm-table { width: 100%; border-collapse: collapse; }
+    .fm-table thead th {
+        position: sticky; top: 0; background: #181825; padding: 8px 16px;
+        font-size: 11px; font-weight: 600; color: #6c7086; text-transform: uppercase;
+        letter-spacing: 0.5px; border-bottom: 1px solid #313244; text-align: left;
+        cursor: pointer; user-select: none;
+    }
+    .fm-table thead th:hover { color: #a6adc8; }
+    .fm-table tbody tr {
+        border-bottom: 1px solid #313244; cursor: pointer; transition: background 0.1s;
+    }
+    .fm-table tbody tr:hover { background: #313244; }
+    .fm-table tbody tr.selected { background: #45475a; }
+    .fm-table td { padding: 10px 16px; font-size: 12px; vertical-align: middle; }
+    .file-icon { font-size: 18px; margin-right: 10px; vertical-align: middle; }
+    .file-icon.btw { color: #89b4fa; }
+    .file-name { font-weight: 500; color: #cdd6f4; }
+    .file-meta { color: #6c7086; }
+
+    /* Grid view */
+    .fm-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px; padding: 16px; overflow-y: auto; flex: 1;
+    }
+    .fm-grid-item {
+        background: #181825; border: 1px solid #313244; border-radius: 8px;
+        padding: 16px; text-align: center; cursor: pointer; transition: all 0.15s;
+        text-decoration: none; color: inherit;
+    }
+    .fm-grid-item:hover { border-color: #89b4fa; background: #1e1e2e; transform: translateY(-2px); }
+    .fm-grid-item .grid-icon { font-size: 40px; color: #89b4fa; margin-bottom: 10px; }
+    .fm-grid-item .grid-name { font-size: 12px; font-weight: 500; color: #cdd6f4; margin-bottom: 4px; word-break: break-word; }
+    .fm-grid-item .grid-meta { font-size: 10px; color: #6c7086; }
+
+    /* Context menu */
+    .context-menu {
+        position: fixed; background: #181825; border: 1px solid #45475a;
+        border-radius: 6px; padding: 4px 0; min-width: 180px; z-index: 1000;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
+    }
+    .context-menu-item {
+        padding: 6px 16px; font-size: 12px; color: #a6adc8; cursor: pointer;
+        display: flex; align-items: center; gap: 8px; text-decoration: none;
+    }
+    .context-menu-item:hover { background: #313244; color: #cdd6f4; }
+    .context-menu-sep { height: 1px; background: #313244; margin: 4px 0; }
+    .context-menu-item.danger { color: #f38ba8; }
+    .context-menu-item.danger:hover { background: #45475a; }
+    .context-menu-item i { width: 16px; text-align: center; }
+
+    /* Empty state */
+    .fm-empty {
+        flex: 1; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; color: #6c7086;
+    }
+    .fm-empty i { font-size: 48px; margin-bottom: 12px; color: #45475a; }
+    .fm-empty h5 { font-size: 14px; margin-bottom: 4px; color: #a6adc8; }
+    .fm-empty p { font-size: 12px; }
+
+    /* Hidden file input */
+    .hidden-input { position: absolute; width: 0; height: 0; overflow: hidden; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-grid"></i> My Designs</h2>
-    <div class="d-flex gap-2">
-        <form action="{% url 'designer:import_btw' %}" method="post" enctype="multipart/form-data" class="d-inline">
-            {% csrf_token %}
-            <label class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-upload"></i> Import BTW
-                <input type="file" name="btw_file" accept=".btw" hidden onchange="this.form.submit()">
+<div class="file-manager">
+    <!-- Sidebar -->
+    <div class="fm-sidebar">
+        <div class="fm-sidebar-header">Explorer</div>
+        <div class="fm-tree">
+            <a href="#" class="fm-tree-item active">
+                <i class="bi bi-folder2-open"></i>
+                <span>All Designs</span>
+                <span class="badge-count">{{ designs|length }}</span>
+            </a>
+            <a href="#" class="fm-tree-item" onclick="filterRecent()">
+                <i class="bi bi-clock-history"></i>
+                <span>Recent</span>
+            </a>
+            <a href="#" class="fm-tree-item" onclick="document.getElementById('importInput').click()">
+                <i class="bi bi-box-arrow-in-down"></i>
+                <span>Import BTW File</span>
+            </a>
+            <form id="importForm" action="{% url 'designer:import_btw' %}" method="post" enctype="multipart/form-data" class="hidden-input">
+                {% csrf_token %}
+                <input type="file" id="importInput" name="btw_file" accept=".btw" onchange="document.getElementById('importForm').submit()">
+            </form>
+            <div style="border-top: 1px solid #313244; margin: 8px 0;"></div>
+            <a href="#" class="fm-tree-item" style="color: #6c7086; font-size: 11px;">
+                <i class="bi bi-tag"></i>
+                <span>Labels</span>
+            </a>
+            <a href="#" class="fm-tree-item" style="color: #6c7086; font-size: 11px;">
+                <i class="bi bi-upc"></i>
+                <span>Barcodes</span>
+            </a>
+            <a href="#" class="fm-tree-item" style="color: #6c7086; font-size: 11px;">
+                <i class="bi bi-box-seam"></i>
+                <span>Shipping</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="fm-main">
+        <!-- Toolbar -->
+        <div class="fm-toolbar">
+            <a href="{% url 'designer:design_create' %}" class="btn-app primary">
+                <i class="bi bi-plus-lg"></i> New Design
+            </a>
+            <label class="btn-app" style="cursor: pointer;">
+                <i class="bi bi-box-arrow-in-down"></i> Import
+                <input type="file" name="btw_file" accept=".btw" hidden
+                       form="importForm" onchange="document.getElementById('importForm').submit()">
             </label>
-        </form>
-        <a href="{% url 'designer:design_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> New Design
-        </a>
+            <div class="toolbar-sep"></div>
+            <div class="view-toggle">
+                <button id="viewList" class="active" onclick="setView('list')"><i class="bi bi-list"></i></button>
+                <button id="viewGrid" onclick="setView('grid')"><i class="bi bi-grid-3x3-gap"></i></button>
+            </div>
+            <div class="fm-search">
+                <i class="bi bi-search"></i>
+                <input type="text" placeholder="Search designs..." id="searchInput" oninput="filterDesigns(this.value)">
+            </div>
+        </div>
+
+        {% if designs %}
+        <!-- List View (default) -->
+        <div class="fm-file-list" id="listView">
+            <table class="fm-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%">Name</th>
+                        <th>Size</th>
+                        <th>DPI</th>
+                        <th>Modified</th>
+                        <th style="width: 160px">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for design in designs %}
+                    <tr class="file-row" data-name="{{ design.name|lower }}" data-id="{{ design.id }}"
+                        ondblclick="window.location='{% url 'designer:editor' design.id %}'"
+                        oncontextmenu="showContextMenu(event, '{{ design.id }}', '{{ design.name|escapejs }}')">
+                        <td>
+                            <i class="bi bi-file-earmark-richtext file-icon btw"></i>
+                            <span class="file-name">{{ design.name }}</span>
+                            {% if design.description %}<br><small class="file-meta" style="margin-left: 28px;">{{ design.description|truncatewords:12 }}</small>{% endif %}
+                        </td>
+                        <td class="file-meta">{{ design.width_mm }} &times; {{ design.height_mm }} mm</td>
+                        <td class="file-meta">{{ design.dpi }}</td>
+                        <td class="file-meta">{{ design.updated_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            <div style="display: flex; gap: 4px;">
+                                <a href="{% url 'designer:editor' design.id %}" class="btn-app" title="Edit">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <a href="{% url 'designer:download_btw' design.id %}" class="btn-app" title="Download BTW">
+                                    <i class="bi bi-file-earmark-arrow-down"></i>
+                                </a>
+                                <a href="{% url 'designer:download_prn' design.id %}" class="btn-app" title="Download PRN">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                <form action="{% url 'designer:design_duplicate' design.id %}" method="post" style="display:inline">
+                                    {% csrf_token %}
+                                    <button class="btn-app" title="Duplicate"><i class="bi bi-copy"></i></button>
+                                </form>
+                                <form action="{% url 'designer:design_delete' design.id %}" method="post" style="display:inline"
+                                      onsubmit="return confirm('Delete this design?')">
+                                    {% csrf_token %}
+                                    <button class="btn-app danger" title="Delete"><i class="bi bi-trash3"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Grid View (hidden by default) -->
+        <div class="fm-grid" id="gridView" style="display: none;">
+            {% for design in designs %}
+            <a href="{% url 'designer:editor' design.id %}" class="fm-grid-item file-card" data-name="{{ design.name|lower }}">
+                <div class="grid-icon"><i class="bi bi-file-earmark-richtext"></i></div>
+                <div class="grid-name">{{ design.name }}</div>
+                <div class="grid-meta">{{ design.width_mm }} &times; {{ design.height_mm }} mm &bull; {{ design.dpi }} DPI</div>
+                <div class="grid-meta">{{ design.updated_at|date:"M d, Y" }}</div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="fm-empty">
+            <i class="bi bi-folder2"></i>
+            <h5>No designs yet</h5>
+            <p>Create your first label design or import a BTW file to get started.</p>
+            <div style="margin-top: 16px; display: flex; gap: 8px;">
+                <a href="{% url 'designer:design_create' %}" class="btn-app primary">
+                    <i class="bi bi-plus-lg"></i> New Design
+                </a>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
-{% if designs %}
-<div class="row g-3">
-    {% for design in designs %}
-    <div class="col-md-4 col-lg-3">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">{{ design.name }}</h5>
-                <p class="text-muted small mb-1">{{ design.width_mm }} x {{ design.height_mm }} mm</p>
-                <p class="text-muted small mb-2">DPI: {{ design.dpi }} | {{ design.columns }} col</p>
-                {% if design.description %}
-                <p class="small">{{ design.description|truncatewords:20 }}</p>
-                {% endif %}
-                <p class="text-muted small">Updated: {{ design.updated_at|date:"M d, Y H:i" }}</p>
-            </div>
-            <div class="card-footer bg-transparent border-0 pb-3">
-                <div class="d-flex gap-1 flex-wrap">
-                    <a href="{% url 'designer:editor' design.id %}" class="btn btn-primary btn-sm">
-                        <i class="bi bi-pencil"></i> Edit
-                    </a>
-                    <a href="{% url 'designer:download_btw' design.id %}" class="btn btn-outline-success btn-sm">
-                        <i class="bi bi-download"></i> BTW
-                    </a>
-                    <a href="{% url 'designer:download_prn' design.id %}" class="btn btn-outline-info btn-sm">
-                        <i class="bi bi-download"></i> PRN
-                    </a>
-                    <form action="{% url 'designer:design_duplicate' design.id %}" method="post" class="d-inline">
-                        {% csrf_token %}
-                        <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-copy"></i></button>
-                    </form>
-                    <form action="{% url 'designer:design_delete' design.id %}" method="post" class="d-inline"
-                          onsubmit="return confirm('Delete this design?')">
-                        {% csrf_token %}
-                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
+<!-- Context Menu -->
+<div class="context-menu" id="contextMenu">
+    <a class="context-menu-item" id="ctxEdit"><i class="bi bi-pencil-square"></i> Open in Editor</a>
+    <a class="context-menu-item" id="ctxDuplicate"><i class="bi bi-copy"></i> Duplicate</a>
+    <div class="context-menu-sep"></div>
+    <a class="context-menu-item" id="ctxBtw"><i class="bi bi-file-earmark-arrow-down"></i> Download BTW</a>
+    <a class="context-menu-item" id="ctxPrn"><i class="bi bi-printer"></i> Download PRN</a>
+    <div class="context-menu-sep"></div>
+    <a class="context-menu-item danger" id="ctxDelete"><i class="bi bi-trash3"></i> Delete</a>
 </div>
-{% else %}
-<div class="text-center py-5">
-    <i class="bi bi-inbox display-1 text-muted"></i>
-    <h4 class="mt-3 text-muted">No designs yet</h4>
-    <p class="text-muted">Create your first label design or import a BTW file.</p>
-    <a href="{% url 'designer:design_create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> Create New Design
-    </a>
-</div>
-{% endif %}
+{% endblock %}
+
+{% block statusbar %}
+<span class="status-item"><span class="status-dot green"></span> Ready</span>
+<span class="status-item">{{ designs|length }} design{{ designs|length|pluralize }}</span>
+<span class="status-item">TSC Label Designer v1.0</span>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function setView(mode) {
+    const listView = document.getElementById('listView');
+    const gridView = document.getElementById('gridView');
+    const btnList = document.getElementById('viewList');
+    const btnGrid = document.getElementById('viewGrid');
+    if (mode === 'grid') {
+        if (listView) listView.style.display = 'none';
+        if (gridView) gridView.style.display = 'grid';
+        btnList.classList.remove('active');
+        btnGrid.classList.add('active');
+    } else {
+        if (listView) listView.style.display = 'block';
+        if (gridView) gridView.style.display = 'none';
+        btnList.classList.add('active');
+        btnGrid.classList.remove('active');
+    }
+}
+
+function filterDesigns(query) {
+    query = query.toLowerCase();
+    document.querySelectorAll('.file-row').forEach(row => {
+        row.style.display = row.dataset.name.includes(query) ? '' : 'none';
+    });
+    document.querySelectorAll('.file-card').forEach(card => {
+        card.style.display = card.dataset.name.includes(query) ? '' : 'none';
+    });
+}
+
+function showContextMenu(e, designId, designName) {
+    e.preventDefault();
+    const menu = document.getElementById('contextMenu');
+    menu.style.display = 'block';
+    menu.style.left = e.pageX + 'px';
+    menu.style.top = e.pageY + 'px';
+
+    document.getElementById('ctxEdit').href = '/' + designId + '/editor/';
+    document.getElementById('ctxBtw').href = '/' + designId + '/download/btw/';
+    document.getElementById('ctxPrn').href = '/' + designId + '/download/prn/';
+    document.getElementById('ctxDuplicate').onclick = function() {
+        const form = document.createElement('form');
+        form.method = 'POST'; form.action = '/' + designId + '/duplicate/';
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'csrfmiddlewaretoken'; input.value = csrf;
+        form.appendChild(input); document.body.appendChild(form); form.submit();
+    };
+    document.getElementById('ctxDelete').onclick = function() {
+        if (confirm('Delete "' + designName + '"?')) {
+            const form = document.createElement('form');
+            form.method = 'POST'; form.action = '/' + designId + '/delete/';
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = 'csrfmiddlewaretoken'; input.value = csrf;
+            form.appendChild(input); document.body.appendChild(form); form.submit();
+        }
+    };
+}
+
+document.addEventListener('click', function() {
+    document.getElementById('contextMenu').style.display = 'none';
+});
+</script>
 {% endblock %}
