@@ -1,0 +1,163 @@
+{% extends "designer/base.html" %}
+{% block title %}New Design - TSC Label Designer{% endblock %}
+{% block subtitle %}New Design{% endblock %}
+{% block menu_new %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .create-layout {
+        display: flex; align-items: flex-start; justify-content: center;
+        padding: 32px; height: 100%; overflow-y: auto;
+    }
+    .create-card {
+        background: #181825; border: 1px solid #313244; border-radius: 10px;
+        width: 100%; max-width: 560px; padding: 0; overflow: hidden;
+    }
+    .create-header {
+        padding: 16px 24px; background: #11111b; border-bottom: 1px solid #313244;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .create-header i { font-size: 20px; color: #89b4fa; }
+    .create-header h3 { font-size: 16px; font-weight: 600; margin: 0; }
+    .create-body { padding: 24px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label-dark {
+        font-size: 11px; font-weight: 600; color: #a6adc8; text-transform: uppercase;
+        letter-spacing: 0.5px; margin-bottom: 6px; display: block;
+    }
+    .form-input-dark {
+        background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+        font-size: 13px; padding: 8px 12px; border-radius: 6px; width: 100%;
+        font-family: 'Inter', sans-serif;
+    }
+    .form-input-dark:focus { outline: none; border-color: #89b4fa; box-shadow: 0 0 0 2px rgba(137,180,250,0.15); }
+    .form-input-dark::placeholder { color: #585b70; }
+    select.form-input-dark { cursor: pointer; }
+    textarea.form-input-dark { resize: vertical; min-height: 60px; }
+
+    .form-row { display: flex; gap: 12px; }
+    .form-row > .form-group { flex: 1; }
+
+    .section-divider {
+        font-size: 10px; font-weight: 700; text-transform: uppercase; color: #585b70;
+        letter-spacing: 1px; margin: 20px 0 12px; padding-bottom: 6px;
+        border-bottom: 1px solid #313244;
+    }
+
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .preset-chip {
+        background: #313244; border: 1px solid #45475a; color: #a6adc8;
+        font-size: 11px; padding: 5px 12px; border-radius: 16px; cursor: pointer;
+        transition: all 0.15s;
+    }
+    .preset-chip:hover { border-color: #89b4fa; color: #89b4fa; }
+    .preset-chip.active { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; font-weight: 500; }
+
+    .create-footer {
+        padding: 16px 24px; border-top: 1px solid #313244;
+        display: flex; justify-content: flex-end; gap: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="create-layout">
+    <div class="create-card">
+        <div class="create-header">
+            <i class="bi bi-plus-circle"></i>
+            <h3>New Label Design</h3>
+        </div>
+        <form method="post" action="{% url 'designer:design_create' %}">
+            {% csrf_token %}
+            <div class="create-body">
+                <div class="form-group">
+                    <label class="form-label-dark">Design Name</label>
+                    <input type="text" name="name" class="form-input-dark" required
+                           placeholder="e.g., Product Label 50x30">
+                </div>
+                <div class="form-group">
+                    <label class="form-label-dark">Description (optional)</label>
+                    <textarea name="description" class="form-input-dark" rows="2"
+                              placeholder="Brief description of this label design"></textarea>
+                </div>
+
+                <div class="section-divider">Quick Presets</div>
+                <div class="presets">
+                    <button type="button" class="preset-chip" data-w="50" data-h="30">50 &times; 30</button>
+                    <button type="button" class="preset-chip" data-w="100" data-h="50">100 &times; 50</button>
+                    <button type="button" class="preset-chip" data-w="40" data-h="20">40 &times; 20</button>
+                    <button type="button" class="preset-chip" data-w="80" data-h="40">80 &times; 40</button>
+                    <button type="button" class="preset-chip" data-w="60" data-h="40">60 &times; 40</button>
+                    <button type="button" class="preset-chip" data-w="100" data-h="150">100 &times; 150</button>
+                    <button type="button" class="preset-chip" data-w="70" data-h="35">70 &times; 35</button>
+                    <button type="button" class="preset-chip" data-w="30" data-h="20">30 &times; 20</button>
+                </div>
+
+                <div class="section-divider">Label Dimensions</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label-dark">Width (mm)</label>
+                        <input type="number" name="width_mm" class="form-input-dark"
+                               id="widthInput" value="50" min="5" max="300" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-dark">Height (mm)</label>
+                        <input type="number" name="height_mm" class="form-input-dark"
+                               id="heightInput" value="30" min="5" max="300" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-dark">DPI</label>
+                        <select name="dpi" class="form-input-dark">
+                            <option value="203" selected>203</option>
+                            <option value="300">300</option>
+                            <option value="600">600</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label-dark">Columns</label>
+                        <input type="number" name="columns" class="form-input-dark" value="1" min="1" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-dark">Gap (mm)</label>
+                        <input type="number" name="gap_mm" class="form-input-dark" value="3" min="0" max="20" step="0.5">
+                    </div>
+                </div>
+
+                <div class="section-divider">Printer Settings</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label-dark">Print Speed (1-10)</label>
+                        <input type="number" name="print_speed" class="form-input-dark" value="4" min="1" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-dark">Darkness (0-15)</label>
+                        <input type="number" name="print_darkness" class="form-input-dark" value="8" min="0" max="15">
+                    </div>
+                </div>
+            </div>
+            <div class="create-footer">
+                <a href="{% url 'designer:design_list' %}" class="btn-app">Cancel</a>
+                <button type="submit" class="btn-app primary" style="padding: 6px 20px;">
+                    <i class="bi bi-pencil-square"></i> Open Designer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.preset-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.getElementById('widthInput').value = btn.dataset.w;
+        document.getElementById('heightInput').value = btn.dataset.h;
+        document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
+</script>
+{% endblock %}

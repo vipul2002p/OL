@@ -1,0 +1,870 @@
+{% extends "designer/base.html" %}
+{% block title %}{{ design.name }} - Editor{% endblock %}
+{% block subtitle %}{{ design.name }} &mdash; {{ design.width_mm }} &times; {{ design.height_mm }} mm{% endblock %}
+
+{% block menu_extra %}
+<span class="menu-item active"><i class="bi bi-pencil-square"></i> Editor</span>
+<span style="flex:1"></span>
+<button class="menu-item" onclick="saveDesign()" title="Ctrl+S"><i class="bi bi-floppy"></i> Save</button>
+<a class="menu-item" href="{% url 'designer:download_btw' design.id %}"><i class="bi bi-file-earmark-arrow-down"></i> BTW</a>
+<a class="menu-item" href="{% url 'designer:download_prn' design.id %}"><i class="bi bi-printer"></i> PRN</a>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .editor-layout { display: flex !important; flex-direction: row !important; flex: 1; height: 100%; min-height: 0; overflow: hidden; flex-wrap: nowrap; }
+
+    /* Left Toolbox */
+    .toolbox {
+        width: 48px; background: #181825; border-right: 1px solid #313244;
+        display: flex; flex-direction: column; align-items: center; padding: 8px 0;
+        gap: 2px; flex-shrink: 0;
+    }
+    .tool-icon {
+        width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+        border-radius: 6px; color: #a6adc8; cursor: pointer; transition: all 0.1s;
+        border: none; background: transparent; font-size: 16px; position: relative;
+    }
+    .tool-icon:hover { background: #313244; color: #cdd6f4; }
+    .tool-icon.active { background: #89b4fa; color: #1e1e2e; }
+    .tool-icon[title]:hover::after {
+        content: attr(title); position: absolute; left: 44px; top: 50%;
+        transform: translateY(-50%); background: #313244; color: #cdd6f4;
+        font-size: 11px; padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+        z-index: 100; pointer-events: none; border: 1px solid #45475a;
+    }
+    .tool-sep { width: 24px; height: 1px; background: #313244; margin: 4px 0; }
+
+    /* Ribbon Toolbar */
+    .ribbon {
+        background: #181825; border-bottom: 1px solid #313244; padding: 6px 12px;
+        display: flex; align-items: center; gap: 6px; flex-shrink: 0; overflow-x: auto;
+    }
+    .ribbon-group {
+        display: flex; align-items: center; gap: 4px; padding: 0 8px;
+        border-right: 1px solid #313244;
+    }
+    .ribbon-group:last-child { border-right: none; }
+    .ribbon-label {
+        font-size: 9px; text-transform: uppercase; color: #6c7086;
+        letter-spacing: 0.5px; margin-right: 4px; white-space: nowrap;
+    }
+    .ribbon-btn {
+        background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+        font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
+        display: inline-flex; align-items: center; gap: 3px; white-space: nowrap;
+    }
+    .ribbon-btn:hover { background: #45475a; border-color: #585b70; }
+    .ribbon-btn.save { background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1; font-weight: 500; }
+    .ribbon-btn.save:hover { background: #94e2d5; }
+    .ribbon-input {
+        background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+        font-size: 11px; padding: 3px 6px; border-radius: 4px; width: 60px;
+    }
+    .ribbon-input:focus { outline: none; border-color: #89b4fa; }
+    .ribbon-select {
+        background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+        font-size: 11px; padding: 3px 4px; border-radius: 4px; cursor: pointer;
+    }
+    .ribbon-select:focus { outline: none; border-color: #89b4fa; }
+
+    /* Main Editor Area */
+    .editor-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .canvas-viewport {
+        flex: 1; background: #11111b; overflow: auto; display: flex;
+        align-items: center; justify-content: center; position: relative;
+    }
+
+    /* Page shadow effect */
+    .page-container {
+        position: relative; display: inline-block;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+        border-radius: 2px; margin: 40px;
+        transition: transform 0.2s ease;
+    }
+    .page-container::before {
+        content: ''; position: absolute; top: -1px; left: -1px;
+        right: -1px; bottom: -1px; border: 1px solid #45475a;
+        border-radius: 2px; pointer-events: none;
+    }
+
+    /* Rulers */
+    .ruler-h {
+        height: 20px; background: #181825; border-bottom: 1px solid #313244;
+        position: relative; overflow: hidden;
+    }
+    .ruler-v {
+        width: 20px; background: #181825; border-right: 1px solid #313244;
+        position: relative; overflow: hidden;
+    }
+
+    /* Zoom controls */
+    .zoom-controls {
+        position: absolute; bottom: 12px; right: 12px; display: flex;
+        align-items: center; gap: 4px; background: #181825; border: 1px solid #313244;
+        border-radius: 6px; padding: 4px 8px; z-index: 10;
+    }
+    .zoom-btn {
+        width: 24px; height: 24px; background: transparent; border: none;
+        color: #a6adc8; cursor: pointer; border-radius: 4px; font-size: 12px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .zoom-btn:hover { background: #313244; color: #cdd6f4; }
+    .zoom-label { font-size: 11px; color: #89b4fa; min-width: 36px; text-align: center; font-weight: 500; }
+
+    /* Properties Panel */
+    .props-panel {
+        width: 260px; background: #181825; border-left: 1px solid #313244;
+        flex-shrink: 0; overflow-y: auto; display: flex; flex-direction: column;
+    }
+    .props-header {
+        padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+        color: #6c7086; letter-spacing: 0.5px; border-bottom: 1px solid #313244;
+        background: #181825; position: sticky; top: 0; z-index: 1;
+    }
+    .props-section { padding: 8px 12px; border-bottom: 1px solid #313244; }
+    .props-section-title {
+        font-size: 10px; font-weight: 600; text-transform: uppercase; color: #585b70;
+        letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .prop-row { display: flex; align-items: center; margin-bottom: 6px; gap: 6px; }
+    .prop-label { font-size: 11px; color: #a6adc8; min-width: 50px; flex-shrink: 0; }
+    .prop-input {
+        background: #313244; border: 1px solid #45475a; color: #cdd6f4;
+        font-size: 11px; padding: 3px 6px; border-radius: 3px; width: 100%;
+    }
+    .prop-input:focus { outline: none; border-color: #89b4fa; }
+    select.prop-input { cursor: pointer; }
+    .prop-color {
+        width: 28px; height: 24px; border: 1px solid #45475a; border-radius: 3px;
+        cursor: pointer; padding: 0; background: transparent;
+    }
+    .prop-check { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a6adc8; }
+
+    /* No selection */
+    .no-selection {
+        padding: 24px 12px; text-align: center; color: #585b70; font-size: 12px;
+    }
+    .no-selection i { font-size: 24px; display: block; margin-bottom: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="editor-layout" style="display:flex !important; flex-direction:row !important; flex:1; height:100%; min-height:0; overflow:hidden;">
+    <!-- Left Toolbox -->
+    <div class="toolbox">
+        <button class="tool-icon" title="Text" onclick="addText()"><i class="bi bi-fonts"></i></button>
+        <button class="tool-icon" title="Barcode" onclick="addBarcode()"><i class="bi bi-upc-scan"></i></button>
+        <button class="tool-icon" title="QR Code" onclick="addQRCode()"><i class="bi bi-qr-code"></i></button>
+        <div class="tool-sep"></div>
+        <button class="tool-icon" title="Rectangle" onclick="addRectangle()"><i class="bi bi-square"></i></button>
+        <button class="tool-icon" title="Filled Rect" onclick="addFilledRect()"><i class="bi bi-square-fill"></i></button>
+        <button class="tool-icon" title="Line" onclick="addLine()"><i class="bi bi-dash-lg"></i></button>
+        <div class="tool-sep"></div>
+        <button class="tool-icon" title="Image" onclick="document.getElementById('imageUpload').click()"><i class="bi bi-image"></i></button>
+        <input type="file" id="imageUpload" accept="image/*" hidden onchange="addImage(event)">
+        <div class="tool-sep"></div>
+        <button class="tool-icon" title="Duplicate (Ctrl+D)" onclick="cloneSelected()"><i class="bi bi-copy"></i></button>
+        <button class="tool-icon" title="Delete (Del)" onclick="deleteSelected()" style="color:#f38ba8"><i class="bi bi-trash3"></i></button>
+        <div style="flex:1"></div>
+        <button class="tool-icon" title="Bring to Front" onclick="bringToFront()"><i class="bi bi-front"></i></button>
+        <button class="tool-icon" title="Send to Back" onclick="sendToBack()"><i class="bi bi-back"></i></button>
+    </div>
+
+    <!-- Main Editor -->
+    <div class="editor-main">
+        <!-- Ribbon -->
+        <div class="ribbon">
+            <div class="ribbon-group">
+                <span class="ribbon-label">File</span>
+                <button class="ribbon-btn save" onclick="saveDesign()"><i class="bi bi-floppy"></i> Save</button>
+                <a class="ribbon-btn" href="{% url 'designer:download_btw' design.id %}"><i class="bi bi-file-earmark-arrow-down"></i> BTW</a>
+                <a class="ribbon-btn" href="{% url 'designer:download_prn' design.id %}"><i class="bi bi-printer"></i> PRN</a>
+            </div>
+            <div class="ribbon-group">
+                <span class="ribbon-label">Label</span>
+                <input type="number" id="labelWidth" class="ribbon-input" value="{{ design.width_mm }}"
+                       min="5" max="300" step="0.5" onchange="updateCanvasSize()" title="Width (mm)">
+                <span style="color:#6c7086;font-size:11px;">&times;</span>
+                <input type="number" id="labelHeight" class="ribbon-input" value="{{ design.height_mm }}"
+                       min="5" max="300" step="0.5" onchange="updateCanvasSize()" title="Height (mm)">
+                <span style="color:#6c7086;font-size:11px;">mm</span>
+                <select id="labelDpi" class="ribbon-select" onchange="updateCanvasSize()" title="DPI">
+                    <option value="203" {% if design.dpi == 203 %}selected{% endif %}>203 DPI</option>
+                    <option value="300" {% if design.dpi == 300 %}selected{% endif %}>300 DPI</option>
+                    <option value="600" {% if design.dpi == 600 %}selected{% endif %}>600 DPI</option>
+                </select>
+            </div>
+            <div class="ribbon-group">
+                <span class="ribbon-label">Actions</span>
+                <button class="ribbon-btn" onclick="cloneSelected()"><i class="bi bi-copy"></i></button>
+                <button class="ribbon-btn" onclick="deleteSelected()"><i class="bi bi-trash3"></i></button>
+                <button class="ribbon-btn" onclick="clearCanvas()" style="color:#f38ba8"><i class="bi bi-x-circle"></i> Clear</button>
+            </div>
+            <div class="ribbon-group">
+                <span class="ribbon-label">Zoom</span>
+                <button class="ribbon-btn" onclick="zoomOut()"><i class="bi bi-dash"></i></button>
+                <span id="ribbonZoom" style="font-size:11px;color:#89b4fa;min-width:32px;text-align:center;">100%</span>
+                <button class="ribbon-btn" onclick="zoomIn()"><i class="bi bi-plus"></i></button>
+                <button class="ribbon-btn" onclick="zoomFit()"><i class="bi bi-arrows-fullscreen"></i></button>
+            </div>
+            <div style="flex:1"></div>
+            <span id="saveStatus" style="font-size:11px;color:#a6e3a1;"><i class="bi bi-check-circle"></i> Ready</span>
+        </div>
+
+        <!-- Canvas Viewport -->
+        <div class="canvas-viewport" id="canvasViewport">
+            <div class="page-container" id="pageContainer">
+                <canvas id="labelCanvas"></canvas>
+            </div>
+            <!-- Zoom Controls (floating) -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out"><i class="bi bi-dash-lg"></i></button>
+                <span class="zoom-label" id="zoomLabel">100%</span>
+                <button class="zoom-btn" onclick="zoomIn()" title="Zoom In"><i class="bi bi-plus-lg"></i></button>
+                <button class="zoom-btn" onclick="zoomFit()" title="Fit to View"><i class="bi bi-arrows-fullscreen"></i></button>
+                <button class="zoom-btn" onclick="zoomReset()" title="Reset to 100%"><i class="bi bi-aspect-ratio"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Properties Panel -->
+    <div class="props-panel">
+        <div class="props-header"><i class="bi bi-sliders"></i> Properties</div>
+
+        <div id="noSelection" class="no-selection">
+            <i class="bi bi-cursor"></i>
+            Select an element to edit its properties
+        </div>
+
+        <div id="commonProps" style="display:none;">
+            <div class="props-section">
+                <div class="props-section-title">Position & Size</div>
+                <div class="prop-row">
+                    <span class="prop-label">X</span>
+                    <input type="number" id="propLeft" class="prop-input" onchange="updateProp('left', this.value)">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Y</span>
+                    <input type="number" id="propTop" class="prop-input" onchange="updateProp('top', this.value)">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">W</span>
+                    <input type="number" id="propWidth" class="prop-input" onchange="updateScaledWidth(this.value)">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">H</span>
+                    <input type="number" id="propHeight" class="prop-input" onchange="updateScaledHeight(this.value)">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Rotate</span>
+                    <input type="number" id="propAngle" class="prop-input" min="0" max="360" onchange="updateProp('angle', this.value)">
+                </div>
+            </div>
+        </div>
+
+        <div id="textProps" style="display:none;">
+            <div class="props-section">
+                <div class="props-section-title">Text</div>
+                <div class="prop-row">
+                    <span class="prop-label">Content</span>
+                </div>
+                <div class="prop-row">
+                    <textarea id="propText" class="prop-input" rows="2" onchange="updateTextContent(this.value)" style="resize:vertical;"></textarea>
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Font</span>
+                    <select id="propFontFamily" class="prop-input" onchange="updateProp('fontFamily', this.value)">
+                        <optgroup label="Sans-Serif">
+                            <option value="Franklin Gothic Medium">Franklin Gothic Medium</option>
+                            <option value="Arial" selected>Arial</option>
+                            <option value="Helvetica">Helvetica</option>
+                            <option value="Inter">Inter</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Open Sans">Open Sans</option>
+                            <option value="Lato">Lato</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Poppins">Poppins</option>
+                            <option value="Nunito">Nunito</option>
+                            <option value="Oswald">Oswald</option>
+                            <option value="Raleway">Raleway</option>
+                            <option value="Libre Franklin">Libre Franklin</option>
+                            <option value="Verdana">Verdana</option>
+                            <option value="Tahoma">Tahoma</option>
+                            <option value="Trebuchet MS">Trebuchet MS</option>
+                            <option value="Segoe UI">Segoe UI</option>
+                            <option value="Calibri">Calibri</option>
+                        </optgroup>
+                        <optgroup label="Serif">
+                            <option value="Times New Roman">Times New Roman</option>
+                            <option value="Georgia">Georgia</option>
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Merriweather">Merriweather</option>
+                            <option value="Cambria">Cambria</option>
+                            <option value="Book Antiqua">Book Antiqua</option>
+                            <option value="Palatino Linotype">Palatino Linotype</option>
+                        </optgroup>
+                        <optgroup label="Monospace">
+                            <option value="Source Code Pro">Source Code Pro</option>
+                            <option value="Courier New">Courier New</option>
+                            <option value="Consolas">Consolas</option>
+                            <option value="Lucida Console">Lucida Console</option>
+                        </optgroup>
+                        <optgroup label="Display">
+                            <option value="Impact">Impact</option>
+                            <option value="Comic Sans MS">Comic Sans MS</option>
+                            <option value="Brush Script MT">Brush Script MT</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Size</span>
+                    <input type="number" id="propFontSize" class="prop-input" min="6" max="200"
+                           onchange="updateProp('fontSize', parseInt(this.value))">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Weight</span>
+                    <select id="propFontWeight" class="prop-input" onchange="updateProp('fontWeight', this.value)">
+                        <option value="normal">Normal</option>
+                        <option value="bold">Bold</option>
+                    </select>
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Color</span>
+                    <input type="color" id="propFill" class="prop-color" value="#000000" onchange="updateProp('fill', this.value)">
+                    <input type="text" id="propFillHex" class="prop-input" style="width:80px" value="#000000"
+                           onchange="updateProp('fill', this.value); document.getElementById('propFill').value=this.value;">
+                </div>
+            </div>
+        </div>
+
+        <div id="barcodeProps" style="display:none;">
+            <div class="props-section">
+                <div class="props-section-title">Barcode</div>
+                <div class="prop-row">
+                    <span class="prop-label">Data</span>
+                    <input type="text" id="propBarcodeData" class="prop-input" onchange="updateBarcodeData(this.value)">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Type</span>
+                    <select id="propBarcodeType" class="prop-input" onchange="updateBarcodeType(this.value)">
+                        <option value="128">Code 128</option>
+                        <option value="39">Code 39</option>
+                        <option value="EAN13">EAN-13</option>
+                        <option value="EAN8">EAN-8</option>
+                    </select>
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Height</span>
+                    <input type="number" id="propBarcodeHeight" class="prop-input" min="20" max="200" onchange="updateBarcodeHeight(this.value)">
+                </div>
+                <div class="prop-row">
+                    <label class="prop-check">
+                        <input type="checkbox" id="propShowBarcodeText" onchange="updateShowBarcodeText(this.checked)" checked>
+                        Show text below barcode
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="qrcodeProps" style="display:none;">
+            <div class="props-section">
+                <div class="props-section-title">QR Code</div>
+                <div class="prop-row">
+                    <span class="prop-label">Data</span>
+                    <input type="text" id="propQrData" class="prop-input" onchange="updateQrData(this.value)">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Size</span>
+                    <input type="number" id="propQrSize" class="prop-input" min="2" max="12" onchange="updateQrSize(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <div id="rectProps" style="display:none;">
+            <div class="props-section">
+                <div class="props-section-title">Shape</div>
+                <div class="prop-row">
+                    <span class="prop-label">Stroke</span>
+                    <input type="color" id="propStroke" class="prop-color" value="#000000" onchange="updateProp('stroke', this.value)">
+                    <input type="number" id="propStrokeWidth" class="prop-input" style="width:50px"
+                           min="0" max="20" onchange="updateProp('strokeWidth', parseInt(this.value))">
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Fill</span>
+                    <input type="color" id="propRectFill" class="prop-color" value="#ffffff" onchange="updateProp('fill', this.value)">
+                </div>
+            </div>
+        </div>
+
+        <!-- Label Info (always visible) -->
+        <div class="props-section" style="margin-top:auto;">
+            <div class="props-section-title">Label Info</div>
+            <div class="prop-row">
+                <span class="prop-label" style="color:#585b70;">Size</span>
+                <span style="font-size:11px;color:#6c7086;" id="labelInfoSize">{{ design.width_mm }} &times; {{ design.height_mm }} mm</span>
+            </div>
+            <div class="prop-row">
+                <span class="prop-label" style="color:#585b70;">DPI</span>
+                <span style="font-size:11px;color:#6c7086;" id="labelInfoDpi">{{ design.dpi }}</span>
+            </div>
+            <div class="prop-row">
+                <span class="prop-label" style="color:#585b70;">Objects</span>
+                <span style="font-size:11px;color:#6c7086;" id="objectCount">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block statusbar %}
+<span class="status-item"><span class="status-dot green" id="statusDot"></span> <span id="statusText">Ready</span></span>
+<span class="status-item">Objects: <span id="statusObjects">0</span></span>
+<span class="status-item">Zoom: <span id="statusZoom">100</span>%</span>
+<span class="status-item">{{ design.width_mm }} &times; {{ design.height_mm }} mm &bull; {{ design.dpi }} DPI</span>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+const DESIGN_ID = "{{ design.id }}";
+const SAVE_URL = "{% url 'designer:design_save' design.id %}";
+
+const MM_TO_PX = 3.78;
+let labelWidthMM = {{ design.width_mm }};
+let labelHeightMM = {{ design.height_mm }};
+let currentZoom = 1.0;
+
+let canvasWidth = Math.round(labelWidthMM * MM_TO_PX);
+let canvasHeight = Math.round(labelHeightMM * MM_TO_PX);
+
+const canvas = new fabric.Canvas('labelCanvas', {
+    width: canvasWidth,
+    height: canvasHeight,
+    backgroundColor: '#ffffff',
+    selection: true,
+});
+
+// Load existing canvas data
+{% if design.canvas_json and design.canvas_json != '{}' %}
+try {
+    const savedData = JSON.parse('{{ design.canvas_json|escapejs }}');
+    if (savedData && savedData.objects && savedData.objects.length > 0) {
+        canvas.loadFromJSON(savedData, function() {
+            canvas.renderAll();
+            updateObjectCount();
+        });
+    }
+} catch(e) {
+    console.log('No saved canvas data or parse error:', e);
+}
+{% endif %}
+
+// Events
+canvas.on('selection:created', updatePropertiesPanel);
+canvas.on('selection:updated', updatePropertiesPanel);
+canvas.on('selection:cleared', clearPropertiesPanel);
+canvas.on('object:modified', updatePropertiesPanel);
+canvas.on('object:added', updateObjectCount);
+canvas.on('object:removed', updateObjectCount);
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
+    if (e.ctrlKey && e.key === 'd') { e.preventDefault(); cloneSelected(); }
+    if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveDesign(); }
+    if (e.ctrlKey && e.key === '=') { e.preventDefault(); zoomIn(); }
+    if (e.ctrlKey && e.key === '-') { e.preventDefault(); zoomOut(); }
+    if (e.ctrlKey && e.key === '0') { e.preventDefault(); zoomReset(); }
+});
+
+// Mouse wheel zoom
+document.getElementById('canvasViewport').addEventListener('wheel', function(e) {
+    if (e.ctrlKey) {
+        e.preventDefault();
+        if (e.deltaY < 0) zoomIn(); else zoomOut();
+    }
+});
+
+// === ZOOM ===
+function updateZoomDisplay() {
+    const pct = Math.round(currentZoom * 100) + '%';
+    document.getElementById('zoomLabel').textContent = pct;
+    document.getElementById('ribbonZoom').textContent = pct;
+    document.getElementById('statusZoom').textContent = Math.round(currentZoom * 100);
+}
+
+function applyZoom() {
+    const container = document.getElementById('pageContainer');
+    container.style.transform = 'scale(' + currentZoom + ')';
+    container.style.transformOrigin = 'center center';
+    updateZoomDisplay();
+}
+
+function zoomIn() {
+    currentZoom = Math.min(currentZoom + 0.1, 3.0);
+    applyZoom();
+}
+
+function zoomOut() {
+    currentZoom = Math.max(currentZoom - 0.1, 0.2);
+    applyZoom();
+}
+
+function zoomReset() {
+    currentZoom = 1.0;
+    applyZoom();
+}
+
+function zoomFit() {
+    const viewport = document.getElementById('canvasViewport');
+    const vw = viewport.clientWidth - 80;
+    const vh = viewport.clientHeight - 80;
+    const scaleX = vw / canvasWidth;
+    const scaleY = vh / canvasHeight;
+    currentZoom = Math.min(scaleX, scaleY, 3.0);
+    currentZoom = Math.max(currentZoom, 0.2);
+    applyZoom();
+}
+
+function updateCanvasSize() {
+    labelWidthMM = parseFloat(document.getElementById('labelWidth').value) || 50;
+    labelHeightMM = parseFloat(document.getElementById('labelHeight').value) || 30;
+    canvasWidth = Math.round(labelWidthMM * MM_TO_PX);
+    canvasHeight = Math.round(labelHeightMM * MM_TO_PX);
+    canvas.setWidth(canvasWidth);
+    canvas.setHeight(canvasHeight);
+    canvas.renderAll();
+    document.getElementById('labelInfoSize').textContent = labelWidthMM + ' \u00d7 ' + labelHeightMM + ' mm';
+    document.getElementById('labelInfoDpi').textContent = document.getElementById('labelDpi').value;
+}
+
+function updateObjectCount() {
+    const count = canvas.getObjects().length;
+    document.getElementById('objectCount').textContent = count;
+    document.getElementById('statusObjects').textContent = count;
+}
+
+// === ADD ELEMENTS ===
+function addText() {
+    const text = new fabric.IText('Label Text', {
+        left: 20, top: 20, fontSize: 20,
+        fontFamily: 'Franklin Gothic Medium', fill: '#000000', fontWeight: 'normal',
+    });
+    canvas.add(text);
+    canvas.setActiveObject(text);
+    canvas.renderAll();
+}
+
+function addBarcode() {
+    const barcodeData = '123456789012';
+    const tempCanvas = document.createElement('canvas');
+    try {
+        JsBarcode(tempCanvas, barcodeData, {
+            format: 'CODE128', width: 2, height: 50,
+            displayValue: true, fontSize: 12, margin: 2,
+        });
+        const imgObj = new fabric.Image(tempCanvas, { left: 20, top: 20 });
+        imgObj.set({
+            type_custom: 'barcode', barcodeData: barcodeData,
+            barcodeType: '128', barcodeHeight: 50, showBarcodeText: true,
+        });
+        canvas.add(imgObj);
+        canvas.setActiveObject(imgObj);
+        canvas.renderAll();
+    } catch(e) { alert('Error creating barcode: ' + e.message); }
+}
+
+function addQRCode() {
+    const qrData = 'https://example.com';
+    const qr = qrcode(0, 'L');
+    qr.addData(qrData); qr.make();
+    const qrImg = qr.createDataUrl(4, 0);
+    fabric.Image.fromURL(qrImg, function(img) {
+        img.set({ left: 20, top: 20, type_custom: 'qrcode', qrData: qrData, qrSize: 4 });
+        canvas.add(img);
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+    });
+}
+
+function addRectangle() {
+    const rect = new fabric.Rect({
+        left: 20, top: 20, width: 100, height: 60,
+        fill: 'transparent', stroke: '#000000', strokeWidth: 2,
+    });
+    canvas.add(rect); canvas.setActiveObject(rect); canvas.renderAll();
+}
+
+function addFilledRect() {
+    const rect = new fabric.Rect({
+        left: 20, top: 20, width: 100, height: 60,
+        fill: '#000000', stroke: '#000000', strokeWidth: 0,
+    });
+    canvas.add(rect); canvas.setActiveObject(rect); canvas.renderAll();
+}
+
+function addLine() {
+    const line = new fabric.Line([20, 20, 200, 20], { stroke: '#000000', strokeWidth: 2 });
+    canvas.add(line); canvas.setActiveObject(line); canvas.renderAll();
+}
+
+function addImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        fabric.Image.fromURL(e.target.result, function(img) {
+            const maxW = canvasWidth * 0.8;
+            const maxH = canvasHeight * 0.8;
+            if (img.width > maxW || img.height > maxH) {
+                const scale = Math.min(maxW / img.width, maxH / img.height);
+                img.scale(scale);
+            }
+            img.set({ left: 20, top: 20 });
+            canvas.add(img); canvas.setActiveObject(img); canvas.renderAll();
+        });
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+}
+
+// === ACTIONS ===
+function deleteSelected() {
+    const active = canvas.getActiveObjects();
+    if (active.length) {
+        active.forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+}
+
+function cloneSelected() {
+    const active = canvas.getActiveObject();
+    if (!active) return;
+    active.clone(function(cloned) {
+        cloned.set({ left: active.left + 15, top: active.top + 15 });
+        canvas.add(cloned); canvas.setActiveObject(cloned); canvas.renderAll();
+    });
+}
+
+function bringToFront() {
+    const a = canvas.getActiveObject();
+    if (a) { canvas.bringToFront(a); canvas.renderAll(); }
+}
+
+function sendToBack() {
+    const a = canvas.getActiveObject();
+    if (a) { canvas.sendToBack(a); canvas.renderAll(); }
+}
+
+function clearCanvas() {
+    if (confirm('Clear all elements?')) {
+        canvas.clear();
+        canvas.backgroundColor = '#ffffff';
+        canvas.renderAll();
+        updateObjectCount();
+    }
+}
+
+// === PROPERTIES PANEL ===
+function updatePropertiesPanel() {
+    const obj = canvas.getActiveObject();
+    if (!obj) { clearPropertiesPanel(); return; }
+
+    document.getElementById('noSelection').style.display = 'none';
+    document.getElementById('commonProps').style.display = 'block';
+
+    document.getElementById('propLeft').value = Math.round(obj.left);
+    document.getElementById('propTop').value = Math.round(obj.top);
+    document.getElementById('propWidth').value = Math.round(obj.getScaledWidth());
+    document.getElementById('propHeight').value = Math.round(obj.getScaledHeight());
+    document.getElementById('propAngle').value = Math.round(obj.angle);
+
+    document.getElementById('textProps').style.display = 'none';
+    document.getElementById('barcodeProps').style.display = 'none';
+    document.getElementById('qrcodeProps').style.display = 'none';
+    document.getElementById('rectProps').style.display = 'none';
+
+    if (obj.type === 'i-text' || obj.type === 'textbox' || obj.type === 'text') {
+        document.getElementById('textProps').style.display = 'block';
+        document.getElementById('propText').value = obj.text || '';
+        document.getElementById('propFontSize').value = obj.fontSize || 20;
+        document.getElementById('propFontWeight').value = obj.fontWeight || 'normal';
+        document.getElementById('propFontFamily').value = obj.fontFamily || 'Arial';
+        document.getElementById('propFill').value = obj.fill || '#000000';
+        document.getElementById('propFillHex').value = obj.fill || '#000000';
+    } else if (obj.type_custom === 'barcode') {
+        document.getElementById('barcodeProps').style.display = 'block';
+        document.getElementById('propBarcodeData').value = obj.barcodeData || '';
+        document.getElementById('propBarcodeType').value = obj.barcodeType || '128';
+        document.getElementById('propBarcodeHeight').value = obj.barcodeHeight || 50;
+        document.getElementById('propShowBarcodeText').checked = obj.showBarcodeText !== false;
+    } else if (obj.type_custom === 'qrcode') {
+        document.getElementById('qrcodeProps').style.display = 'block';
+        document.getElementById('propQrData').value = obj.qrData || '';
+        document.getElementById('propQrSize').value = obj.qrSize || 4;
+    } else if (obj.type === 'rect' || obj.type === 'line') {
+        document.getElementById('rectProps').style.display = 'block';
+        document.getElementById('propStroke').value = obj.stroke || '#000000';
+        document.getElementById('propStrokeWidth').value = obj.strokeWidth || 1;
+        if (obj.type === 'rect') {
+            document.getElementById('propRectFill').value = obj.fill === 'transparent' ? '#ffffff' : (obj.fill || '#ffffff');
+        }
+    }
+}
+
+function clearPropertiesPanel() {
+    document.getElementById('noSelection').style.display = 'block';
+    document.getElementById('commonProps').style.display = 'none';
+    document.getElementById('textProps').style.display = 'none';
+    document.getElementById('barcodeProps').style.display = 'none';
+    document.getElementById('qrcodeProps').style.display = 'none';
+    document.getElementById('rectProps').style.display = 'none';
+}
+
+function updateProp(prop, value) {
+    const obj = canvas.getActiveObject();
+    if (!obj) return;
+    if (typeof value === 'string' && !isNaN(value) && prop !== 'fill' && prop !== 'stroke' && prop !== 'fontFamily' && prop !== 'fontWeight') {
+        value = parseFloat(value);
+    }
+    obj.set(prop, value);
+    canvas.renderAll();
+}
+
+function updateScaledWidth(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.set('scaleX', parseFloat(v) / obj.width); canvas.renderAll(); }
+}
+
+function updateScaledHeight(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.set('scaleY', parseFloat(v) / obj.height); canvas.renderAll(); }
+}
+
+function updateTextContent(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.set('text', v); canvas.renderAll(); }
+}
+
+function updateBarcodeData(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.barcodeData = v; regenerateBarcode(obj); }
+}
+function updateBarcodeType(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.barcodeType = v; regenerateBarcode(obj); }
+}
+function updateBarcodeHeight(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.barcodeHeight = parseInt(v); regenerateBarcode(obj); }
+}
+function updateShowBarcodeText(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.showBarcodeText = v; regenerateBarcode(obj); }
+}
+
+function regenerateBarcode(obj) {
+    const tc = document.createElement('canvas');
+    const fm = { '128': 'CODE128', '39': 'CODE39', 'EAN13': 'EAN13', 'EAN8': 'EAN8' };
+    try {
+        JsBarcode(tc, obj.barcodeData || '123456789012', {
+            format: fm[obj.barcodeType] || 'CODE128', width: 2,
+            height: obj.barcodeHeight || 50, displayValue: obj.showBarcodeText !== false,
+            fontSize: 12, margin: 2,
+        });
+        const oL = obj.left, oT = obj.top, idx = canvas.getObjects().indexOf(obj);
+        canvas.remove(obj);
+        const ni = new fabric.Image(tc, { left: oL, top: oT });
+        ni.set({ type_custom: 'barcode', barcodeData: obj.barcodeData, barcodeType: obj.barcodeType,
+                 barcodeHeight: obj.barcodeHeight, showBarcodeText: obj.showBarcodeText });
+        canvas.insertAt(ni, idx);
+        canvas.setActiveObject(ni);
+        canvas.renderAll();
+    } catch(e) { alert('Invalid barcode data: ' + e.message); }
+}
+
+function updateQrData(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.qrData = v; regenerateQR(obj); }
+}
+function updateQrSize(v) {
+    const obj = canvas.getActiveObject();
+    if (obj) { obj.qrSize = parseInt(v); regenerateQR(obj); }
+}
+
+function regenerateQR(obj) {
+    try {
+        const qr = qrcode(0, 'L');
+        qr.addData(obj.qrData || 'https://example.com'); qr.make();
+        const qrImg = qr.createDataUrl(obj.qrSize || 4, 0);
+        const oL = obj.left, oT = obj.top, idx = canvas.getObjects().indexOf(obj);
+        canvas.remove(obj);
+        fabric.Image.fromURL(qrImg, function(img) {
+            img.set({ left: oL, top: oT, type_custom: 'qrcode', qrData: obj.qrData, qrSize: obj.qrSize });
+            canvas.insertAt(img, idx);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+        });
+    } catch(e) { alert('Error generating QR code: ' + e.message); }
+}
+
+// === SAVE ===
+function saveDesign() {
+    const status = document.getElementById('saveStatus');
+    const statusText = document.getElementById('statusText');
+    const dot = document.getElementById('statusDot');
+    status.innerHTML = '<i class="bi bi-arrow-repeat"></i> Saving...';
+    status.style.color = '#f9e2af';
+    statusText.textContent = 'Saving...';
+    dot.className = 'status-dot yellow';
+
+    const canvasJSON = canvas.toJSON(['type_custom', 'barcodeData', 'barcodeType', 'barcodeHeight', 'showBarcodeText', 'qrData', 'qrSize']);
+    const payload = {
+        canvas_json: canvasJSON,
+        name: '{{ design.name|escapejs }}',
+        width_mm: parseFloat(document.getElementById('labelWidth').value),
+        height_mm: parseFloat(document.getElementById('labelHeight').value),
+        dpi: parseInt(document.getElementById('labelDpi').value),
+    };
+
+    fetch(SAVE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            status.innerHTML = '<i class="bi bi-check-circle"></i> Saved';
+            status.style.color = '#a6e3a1';
+            statusText.textContent = 'Saved';
+            dot.className = 'status-dot green';
+            setTimeout(() => {
+                status.innerHTML = '<i class="bi bi-check-circle"></i> Ready';
+                statusText.textContent = 'Ready';
+            }, 2000);
+        } else {
+            status.innerHTML = '<i class="bi bi-exclamation-circle"></i> Error';
+            status.style.color = '#f38ba8';
+            statusText.textContent = 'Error';
+        }
+    })
+    .catch(err => {
+        status.innerHTML = '<i class="bi bi-exclamation-circle"></i> Save failed';
+        status.style.color = '#f38ba8';
+        statusText.textContent = 'Save failed';
+        console.error(err);
+    });
+}
+
+setInterval(saveDesign, 60000);
+
+// Auto-fit on load
+setTimeout(zoomFit, 100);
+</script>
+{% endblock %}
